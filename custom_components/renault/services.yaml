@@ -1,0 +1,189 @@
+ac_start:
+  fields:
+    vehicle:
+      required: true
+      selector:
+        device:
+          integration: renault
+    temperature:
+      example: "21"
+      required: true
+      selector:
+        number:
+          min: 15
+          max: 25
+          step: 0.5
+          unit_of_measurement: °C
+    when:
+      example: "2020-05-01T17:45:00"
+      selector:
+        datetime:
+
+ac_cancel:
+  fields:
+    vehicle:
+      required: true
+      selector:
+        device:
+          integration: renault
+
+ac_set_schedules:
+  fields:
+    vehicle:
+      required: true
+      selector:
+        device:
+          integration: renault
+    schedules:
+      example:
+        - id: 1
+          activated: false
+        - id: 2
+          activated: true
+          monday:
+            readyAtTime: "T20:45Z"
+          sunday:
+            readyAtTime: "T20:45Z"
+        - id: 3
+          activated: false
+        - id: 4
+          activated: false
+        - id: 5
+          activated: false
+      required: true
+      selector:
+        object:
+
+charge_start:
+  fields:
+    vehicle:
+      required: true
+      selector:
+        device:
+          integration: renault
+    when:
+      example: "2026-03-01T17:45:00"
+      selector:
+        datetime:
+
+charge_set_schedules:
+  fields:
+    vehicle:
+      required: true
+      selector:
+        device:
+          integration: renault
+    schedules:
+      example:
+        - id: 1
+          activated: true
+          monday:
+            startTime: "T12:00Z"
+            duration: 15
+          tuesday:
+            startTime: "T12:00Z"
+            duration: 15
+          wednesday:
+            startTime: "T12:00Z"
+            duration: 15
+          thursday:
+            startTime: "T12:00Z"
+            duration: 15
+          friday:
+            startTime: "T12:00Z"
+            duration: 15
+          saturday:
+            startTime: "T12:00Z"
+            duration: 15
+          sunday:
+            startTime: "T12:00Z"
+            duration: 15
+        - id: 2
+          activated: true
+          monday:
+            startTime: "T12:00Z"
+            duration: 240
+          tuesday:
+            startTime: "T12:00Z"
+            duration: 240
+          wednesday:
+            startTime: "T12:00Z"
+            duration: 240
+          thursday:
+            startTime: "T12:00Z"
+            duration: 240
+          friday:
+            startTime: "T12:00Z"
+            duration: 240
+          saturday:
+            startTime: "T12:00Z"
+            duration: 240
+          sunday:
+            startTime: "T12:00Z"
+            duration: 240
+      required: true
+      selector:
+        object:
+
+ev_set_schedules:
+  fields:
+    vehicle:
+      required: true
+      selector:
+        device:
+          integration: renault
+    programs:
+      example:
+        - programActivationStatus: true
+          programType: PRECONDITIONING
+          programDepartureTime: "07:30"
+          programActivationMonday: true
+          programActivationTuesday: true
+          programActivationWednesday: true
+          programActivationThursday: true
+          programActivationFriday: true
+          programActivationSaturday: false
+          programActivationSunday: false
+      required: false
+      selector:
+        object:
+    preconditioning_temperature:
+      example: "21.0"
+      required: false
+      selector:
+        number:
+          min: 16
+          max: 28
+          step: 0.5
+          unit_of_measurement: °C
+    charge_mode_rq:
+      example: "SCHEDULED"
+      required: false
+      selector:
+        select:
+          options:
+            - SCHEDULED
+            - SMARTCHARGING_OFFPEAK
+            - V2G
+    charge_time_start:
+      example: "01:00"
+      required: false
+      selector:
+        text:
+    charge_duration:
+      example: "60"
+      required: false
+      selector:
+        number:
+          min: 15
+          max: 1440
+          step: 15
+          unit_of_measurement: min
+
+ev_clear_schedules:
+  fields:
+    vehicle:
+      required: true
+      selector:
+        device:
+          integration: renault
