@@ -149,7 +149,7 @@ class RenaultFlowHandler(ConfigFlow, domain=DOMAIN):
                     )
                 except PendingTwoFactorAuthenticationException:
                     return await self.async_step_two_factor_email()
-                except aiohttp.ClientError, GigyaException:
+                except (aiohttp.ClientError, GigyaException):
                     errors["base"] = "cannot_connect"
                 except Exception:
                     _LOGGER.exception("Unexpected exception")
@@ -242,7 +242,7 @@ class RenaultFlowHandler(ConfigFlow, domain=DOMAIN):
                 )
             except PendingTwoFactorAuthenticationException:
                 return await self.async_step_two_factor_email()
-            except aiohttp.ClientError, GigyaException:
+            except (aiohttp.ClientError, GigyaException):
                 errors["base"] = "cannot_connect"
             except Exception:
                 _LOGGER.exception("Unexpected exception")
@@ -272,7 +272,7 @@ class RenaultFlowHandler(ConfigFlow, domain=DOMAIN):
 
         try:
             emails = await self.renault_hub.get_two_factor_auth_emails()
-        except aiohttp.ClientError, GigyaException:
+        except (aiohttp.ClientError, GigyaException):
             return self.async_abort(reason="cannot_connect")
         except Exception:
             _LOGGER.exception("Unexpected exception")
@@ -309,7 +309,7 @@ class RenaultFlowHandler(ConfigFlow, domain=DOMAIN):
         """Email the two-factor authentication code."""
         try:
             await self.renault_hub.request_two_factor_auth_code(email_id)
-        except aiohttp.ClientError, GigyaException:
+        except (aiohttp.ClientError, GigyaException):
             return self.async_abort(reason="cannot_connect")
         except Exception:
             _LOGGER.exception("Unexpected exception")
@@ -328,7 +328,7 @@ class RenaultFlowHandler(ConfigFlow, domain=DOMAIN):
             except InvalidVerificationCodeException:
                 errors["base"] = "invalid_code"
             # Other failures may discard the pending login, so the code can't be retried.
-            except aiohttp.ClientError, GigyaException:
+            except (aiohttp.ClientError, GigyaException):
                 return self.async_abort(reason="cannot_connect")
             except Exception:
                 _LOGGER.exception("Unexpected exception")

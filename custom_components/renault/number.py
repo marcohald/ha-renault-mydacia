@@ -1,4 +1,7 @@
 """Support for Renault number entities."""
+from typing import Generic, TypeVar, Any
+T = TypeVar('T', bound=Any)
+
 
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
@@ -31,9 +34,7 @@ PARALLEL_UPDATES = 1
 
 
 @dataclass(frozen=True, kw_only=True)
-class RenaultNumberEntityDescription[T: KamereonVehicleDataAttributes](
-    NumberEntityDescription, RenaultDataEntityDescription
-):
+class RenaultNumberEntityDescription(NumberEntityDescription, RenaultDataEntityDescription, Generic[T]):
     """Class describing Renault number entities."""
 
     value_fn: Callable[[RenaultNumberEntity[T]], float | None]
@@ -109,9 +110,7 @@ async def async_setup_entry(
     )
 
 
-class RenaultNumberEntity[T: KamereonVehicleDataAttributes](
-    RenaultDataEntity[T], NumberEntity
-):
+class RenaultNumberEntity(RenaultDataEntity[T], NumberEntity, Generic[T]):
     """Mixin for number specific attributes."""
 
     entity_description: RenaultNumberEntityDescription[T]

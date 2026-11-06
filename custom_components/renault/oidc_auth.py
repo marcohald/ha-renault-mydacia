@@ -90,9 +90,11 @@ async def kamereon_request_with_bearer(
         "Content-type": content_type,
         "Accept": "application/json",
         "apikey": api_key,
-        "Authorization": bearer_val,
-        "x-gigya-id_token": raw_token,
     }
+    if gigya_jwt.startswith("Bearer "):
+        headers["Authorization"] = gigya_jwt
+    else:
+        headers["x-gigya-id_token"] = gigya_jwt
     async with websession.request(
         method,
         url,

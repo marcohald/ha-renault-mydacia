@@ -24,7 +24,7 @@ from .renault_hub import RenaultHub
 from .services import async_setup_services
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
-type RenaultConfigEntry = ConfigEntry[RenaultHub]
+RenaultConfigEntry = ConfigEntry[RenaultHub]
 
 
 def _account_not_found_issue_id(entry_id: str) -> str:
@@ -40,7 +40,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(
     hass: HomeAssistant, config_entry: RenaultConfigEntry
-) -> None:
+) -> bool:
     """Load a config entry."""
     renault_hub = RenaultHub(hass, config_entry.data[RenaultConfigurationKeys.LOCALE])
     try:
@@ -81,13 +81,14 @@ async def async_setup_entry(
     config_entry.runtime_data = renault_hub
 
     await hass.config_entries.async_forward_entry_setups(config_entry, PLATFORMS)
+    return True
 
 
 async def async_unload_entry(
     hass: HomeAssistant, config_entry: RenaultConfigEntry
-) -> None:
+) -> bool:
     """Unload a config entry."""
-    await hass.config_entries.async_unload_platforms_or_raise(config_entry, PLATFORMS)
+    return await hass.config_entries.async_unload_platforms(config_entry, PLATFORMS)
 
 
 async def async_remove_config_entry_device(

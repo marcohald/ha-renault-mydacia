@@ -1,4 +1,7 @@
 """Support for Renault sensors."""
+from typing import Generic, TypeVar, Any
+T = TypeVar('T', bound=Any)
+
 
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
@@ -24,9 +27,7 @@ PARALLEL_UPDATES = 1
 
 
 @dataclass(frozen=True, kw_only=True)
-class RenaultSelectEntityDescription[T: KamereonVehicleDataAttributes](
-    SelectEntityDescription, RenaultDataEntityDescription
-):
+class RenaultSelectEntityDescription(SelectEntityDescription, RenaultDataEntityDescription, Generic[T]):
     """Class describing Renault select entities."""
 
     value_fn: Callable[[RenaultSelectEntity[T]], str | None]
@@ -53,9 +54,7 @@ async def async_setup_entry(
     )
 
 
-class RenaultSelectEntity[T: KamereonVehicleDataAttributes](
-    RenaultDataEntity[T], SelectEntity
-):
+class RenaultSelectEntity(RenaultDataEntity[T], SelectEntity, Generic[T]):
     """Mixin for sensor specific attributes."""
 
     entity_description: RenaultSelectEntityDescription[T]

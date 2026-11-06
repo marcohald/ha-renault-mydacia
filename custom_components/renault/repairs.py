@@ -70,7 +70,7 @@ class AccountNotFoundRepairFlow(RepairsFlow):
         except NotAuthenticatedException:
             self._entry.async_start_reauth(self.hass)
             return self.async_abort(reason="reauth_required")
-        except aiohttp.ClientError, GigyaException, KamereonResponseException:
+        except (aiohttp.ClientError, GigyaException, KamereonResponseException):
             return self.async_abort(reason="cannot_connect")
 
         configured_account_ids = {

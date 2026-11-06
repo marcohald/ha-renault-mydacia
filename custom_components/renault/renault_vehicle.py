@@ -1,3 +1,4 @@
+from typing import ParamSpec, TypeVar
 """Proxy to handle account communication with Renault servers."""
 
 import asyncio
@@ -30,7 +31,10 @@ from .ev_settings import (
 LOGGER = logging.getLogger(__name__)
 
 
-def with_error_wrapping[**_P, _R](
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+def with_error_wrapping(
     func: Callable[Concatenate[RenaultVehicleProxy, _P], Awaitable[_R]],
 ) -> Callable[Concatenate[RenaultVehicleProxy, _P], Coroutine[Any, Any, _R]]:
     """Catch Renault errors."""
@@ -38,9 +42,9 @@ def with_error_wrapping[**_P, _R](
     @wraps(func)
     async def wrapper(
         self: RenaultVehicleProxy,
-        *args: _P.args,
-        **kwargs: _P.kwargs,
-    ) -> _R:
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
         """Catch RenaultException errors and raise HomeAssistantError."""
         try:
             return await func(self, *args, **kwargs)
@@ -175,7 +179,6 @@ class RenaultVehicleProxy:
                 )
                 del self.coordinators[key]
 
-    @with_error_wrapping
     async def get_ev_settings(self) -> KamereonVehicleEvSettingsData:
         """Fetch KCM /ev/settings for Phase 2 / C1AH2 vehicles."""
         response = await self._vehicle._get_vehicle_data(EV_SETTINGS_ENDPOINT)

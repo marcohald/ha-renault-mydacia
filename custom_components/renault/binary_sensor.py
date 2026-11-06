@@ -1,4 +1,7 @@
 """Support for Renault binary sensors."""
+from typing import Generic, TypeVar, Any
+T = TypeVar('T', bound=Any)
+
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -39,10 +42,8 @@ _PLUG_FROM_CHARGE_STATUS: set[ChargeState] = {
 
 
 @dataclass(frozen=True, kw_only=True)
-class RenaultBinarySensorEntityDescription[T: KamereonVehicleDataAttributes](
-    BinarySensorEntityDescription,
-    RenaultDataEntityDescription,
-):
+class RenaultBinarySensorEntityDescription(BinarySensorEntityDescription,
+    RenaultDataEntityDescription, Generic[T]):
     """Class describing Renault binary sensor entities."""
 
     value_lambda: Callable[[RenaultBinarySensor[T]], bool | None]
@@ -68,9 +69,7 @@ async def async_setup_entry(
     )
 
 
-class RenaultBinarySensor[T: KamereonVehicleDataAttributes](
-    RenaultDataEntity[T], BinarySensorEntity
-):
+class RenaultBinarySensor(RenaultDataEntity[T], BinarySensorEntity, Generic[T]):
     """Mixin for binary sensor specific attributes."""
 
     entity_description: RenaultBinarySensorEntityDescription[T]

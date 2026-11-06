@@ -169,7 +169,8 @@ class RenaultHub:
     def _install_oidc_jwt_resolver(self, config_entry: RenaultConfigEntry) -> None:
         """Install an OIDC-aware _get_jwt method on the underlying RenaultSession."""
         session = self._client.session
-        session._credentials[CONF_KAMEREON_APIKEY] = Credential(MYDACIA_WIRED_API_KEY)
+        if CONF_KAMEREON_APIKEY not in session._credentials:
+            session._credentials[CONF_KAMEREON_APIKEY] = Credential(MYDACIA_WIRED_API_KEY)
         if access_token := config_entry.data.get(
             RenaultConfigurationKeys.OIDC_ACCESS_TOKEN
         ):
@@ -377,7 +378,7 @@ class RenaultHub:
                 )
                 if new_vehicle_links:
                     await self._async_add_vehicles(new_vehicle_links)
-            except ConfigEntryAuthFailed, NotAuthenticatedException:
+            except (ConfigEntryAuthFailed, NotAuthenticatedException):
                 self._config_entry.async_start_reauth(self._hass)
             except (aiohttp.ClientError, TimeoutError, GigyaException) as err:
                 LOGGER.debug(
@@ -433,11 +434,11 @@ class RenaultHub:
         await vehicle.async_initialise()
         device_registry.async_get_or_create(
             config_entry_id=config_entry.entry_id,
-            identifiers=vehicle.device_info.identifiers,
-            manufacturer=vehicle.device_info.manufacturer,
-            name=vehicle.device_info.name,
-            model=vehicle.device_info.model,
-            model_id=vehicle.device_info.model_id,
+            identifiers=vehicle.device_info["identifiers"],
+            manufacturer=vehicle.device_info.get("manufacturer"),
+            name=vehicle.device_info.get("name"),
+            model=vehicle.device_info.get("model"),
+            model_id=vehicle.device_info.get("model_id"),
             sw_version=None,  # cleanup from PR #125399
         )
         self._vehicles[vehicle_link.vin] = vehicle

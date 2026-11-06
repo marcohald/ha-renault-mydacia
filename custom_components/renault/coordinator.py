@@ -1,4 +1,7 @@
 """Proxy to handle account communication with Renault servers."""
+from typing import Generic, TypeVar, Any
+T = TypeVar('T', bound=Any)
+
 
 import asyncio
 from collections.abc import Awaitable, Callable
@@ -35,9 +38,7 @@ _LOGGER = logging.getLogger(__name__)
 _PARALLEL_SEMAPHORE = asyncio.Semaphore(1)
 
 
-class RenaultDataUpdateCoordinator[T: KamereonVehicleDataAttributes](
-    DataUpdateCoordinator[T]
-):
+class RenaultDataUpdateCoordinator(DataUpdateCoordinator[T], Generic[T]):
     """Handle vehicle communication with Renault servers."""
 
     config_entry: RenaultConfigEntry

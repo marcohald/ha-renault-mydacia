@@ -1,4 +1,7 @@
 """Base classes for Renault entities."""
+from typing import Generic, TypeVar, Any
+T = TypeVar('T', bound=Any)
+
 
 from dataclasses import dataclass
 from typing import override
@@ -37,9 +40,7 @@ class RenaultEntity(Entity):
         self._attr_unique_id = f"{self.vehicle.details.vin}_{description.key}".lower()
 
 
-class RenaultDataEntity[T: KamereonVehicleDataAttributes](
-    CoordinatorEntity[RenaultDataUpdateCoordinator[T]], RenaultEntity
-):
+class RenaultDataEntity(CoordinatorEntity[RenaultDataUpdateCoordinator[T]], RenaultEntity, Generic[T]):
     """Implementation of a Renault entity with a data coordinator."""
 
     def __init__(
