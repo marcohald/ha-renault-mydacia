@@ -184,6 +184,7 @@ class RenaultVehicleListCoordinator(DataUpdateCoordinator[list[KamereonVehiclesL
             name=f"{account.account_id} vehicles",
             update_interval=VEHICLE_LIST_SCAN_INTERVAL,
         )
+        self.config_entry = config_entry
         self._account = account
         self._hub = hub
 
@@ -205,6 +206,21 @@ class RenaultVehicleListCoordinator(DataUpdateCoordinator[list[KamereonVehiclesL
             ) from err
 
         except NotAuthenticatedException as err:
+            if self.config_entry.data.get(RenaultConfigurationKeys.OIDC_REFRESH_TOKEN):
+                _LOGGER.info(
+                    "OIDC access token expired during vehicle list poll; attempting auto-refresh"
+                )
+                try:
+                    refreshed = await self._hub.async_refresh_oidc_token(self.config_entry)
+                    if refreshed:
+                        async with _PARALLEL_SEMAPHORE:
+                            vehicles = await self._account.get_vehicles()
+                            return vehicles.vehicleLinks or []
+                except Exception as refresh_err:
+                    _LOGGER.warning(
+                        "Auto-refresh of OIDC token failed during vehicle list poll: %s",
+                        refresh_err,
+                    )
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN,
                 translation_key="authentication_expired",

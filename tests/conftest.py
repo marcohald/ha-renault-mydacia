@@ -74,8 +74,9 @@ def _ensure_mock_modules() -> None:
                 pass
 
 
-        from dataclasses import dataclass
+        from dataclasses import dataclass, field
         @dataclass(frozen=True, kw_only=True)
+
         class EntityDescription:
             key: str
             name: str | None = None
@@ -151,10 +152,51 @@ def _ensure_mock_modules() -> None:
         sys.modules["homeassistant.helpers.update_coordinator"] = ha_helpers_update
         sys.modules["homeassistant.config_entries"] = ha_config_entries
         sys.modules["homeassistant.helpers.config_validation"] = ha_cv
+        ha_dr.DeviceInfo = MagicMock
+        ha_dr.AnyDeviceEntry = Any
+
+        ha_ir = ModuleType("homeassistant.helpers.issue_registry")
+        ha_ir.async_create_issue = MagicMock()
+        ha_ir.async_delete_issue = MagicMock()
+        ha_ir.IssueSeverity = MagicMock()
+
+        ha_typing = ModuleType("homeassistant.helpers.typing")
+        ha_typing.ConfigType = dict
+
+        ha_service = ModuleType("homeassistant.helpers.service")
+        ha_service.async_get_device_and_config_entry = MagicMock()
+
+        sys.modules["homeassistant"] = ha
+        sys.modules["homeassistant.const"] = ha_const
+        ha_core.CALLBACK_TYPE = Any
+        sys.modules["homeassistant.core"] = ha_core
+
+        ha_aiohttp = ModuleType("homeassistant.helpers.aiohttp_client")
+        ha_aiohttp.async_get_clientsession = MagicMock()
+        sys.modules["homeassistant.helpers.aiohttp_client"] = ha_aiohttp
+        sys.modules["homeassistant.exceptions"] = ha_exceptions
+        sys.modules["homeassistant.helpers"] = ha_helpers
+        sys.modules["homeassistant.helpers.entity"] = ha_helpers_entity
+        sys.modules["homeassistant.helpers.update_coordinator"] = ha_helpers_update
+        sys.modules["homeassistant.config_entries"] = ha_config_entries
+        sys.modules["homeassistant.helpers.config_validation"] = ha_cv
         sys.modules["homeassistant.helpers.device_registry"] = ha_dr
         sys.modules["homeassistant.helpers.issue_registry"] = ha_ir
         sys.modules["homeassistant.helpers.typing"] = ha_typing
         sys.modules["homeassistant.helpers.service"] = ha_service
+
+        ha_diag = ModuleType("homeassistant.components.diagnostics")
+        def async_redact_data(data, to_redact):
+            if isinstance(data, dict):
+                return {
+                    k: "**REDACTED**" if k in to_redact else async_redact_data(v, to_redact)
+                    for k, v in data.items()
+                }
+            if isinstance(data, list):
+                return [async_redact_data(item, to_redact) for item in data]
+            return data
+        ha_diag.async_redact_data = async_redact_data
+        sys.modules["homeassistant.components.diagnostics"] = ha_diag
 
         ha_ep = ModuleType("homeassistant.helpers.entity_platform")
         ha_ep.AddConfigEntryEntitiesCallback = Any
@@ -177,13 +219,73 @@ def _ensure_mock_modules() -> None:
         sys.modules["homeassistant.components.time"] = ha_time
 
         ha_number = ModuleType("homeassistant.components.number")
-        ha_number.NumberEntity = ha_helpers_entity.Entity
+        class NumberEntity(ha_helpers_entity.Entity):
+            @property
+            def native_min_value(self):
+                return getattr(self.entity_description, "native_min_value", 0.0)
+            @property
+            def native_max_value(self):
+                return getattr(self.entity_description, "native_max_value", 100.0)
+            @property
+            def native_step(self):
+                return getattr(self.entity_description, "native_step", 1.0)
+        ha_number.NumberEntity = NumberEntity
+
+        @dataclass(frozen=True, kw_only=True)
+        class NumberEntityDescription(EntityDescription):
+            native_min_value: float = 0.0
+            native_max_value: float = 100.0
+            native_step: float = 1.0
+            native_unit_of_measurement: str | None = None
+            mode: Any = None
+        ha_number.NumberEntityDescription = NumberEntityDescription
         ha_number.NumberDeviceClass = MagicMock()
+        ha_number.NumberMode = MagicMock()
         sys.modules["homeassistant.components.number"] = ha_number
 
+
         ha_select = ModuleType("homeassistant.components.select")
-        ha_select.SelectEntity = ha_helpers_entity.Entity
+        class SelectEntity(ha_helpers_entity.Entity):
+            @property
+            def options(self):
+                return getattr(self.entity_description, "options", [])
+        ha_select.SelectEntity = SelectEntity
+
+        @dataclass(frozen=True, kw_only=True)
+        class SelectEntityDescription(EntityDescription):
+            options: list[str] = field(default_factory=list)
+        ha_select.SelectEntityDescription = SelectEntityDescription
         sys.modules["homeassistant.components.select"] = ha_select
+
+
+        ha_sensor = ModuleType("homeassistant.components.sensor")
+        ha_sensor.SensorEntity = ha_helpers_entity.Entity
+        @dataclass(frozen=True, kw_only=True)
+        class SensorEntityDescription(EntityDescription):
+            native_unit_of_measurement: str | None = None
+            state_class: Any = None
+            options: list[str] | None = None
+        ha_sensor.SensorEntityDescription = SensorEntityDescription
+
+        ha_sensor.SensorDeviceClass = MagicMock()
+        ha_sensor.SensorStateClass = MagicMock()
+        sys.modules["homeassistant.components.sensor"] = ha_sensor
+
+        ha_button = ModuleType("homeassistant.components.button")
+        ha_button.ButtonEntity = ha_helpers_entity.Entity
+        @dataclass(frozen=True, kw_only=True)
+        class ButtonEntityDescription(EntityDescription): pass
+        ha_button.ButtonEntityDescription = ButtonEntityDescription
+        ha_button.ButtonDeviceClass = MagicMock()
+        sys.modules["homeassistant.components.button"] = ha_button
+
+        ha_binary = ModuleType("homeassistant.components.binary_sensor")
+        ha_binary.BinarySensorEntity = ha_helpers_entity.Entity
+        @dataclass(frozen=True, kw_only=True)
+        class BinarySensorEntityDescription(EntityDescription): pass
+        ha_binary.BinarySensorEntityDescription = BinarySensorEntityDescription
+        ha_binary.BinarySensorDeviceClass = MagicMock()
+        sys.modules["homeassistant.components.binary_sensor"] = ha_binary
 
         ha_sensor = ModuleType("homeassistant.components.sensor")
         ha_sensor.SensorEntity = ha_helpers_entity.Entity
@@ -270,6 +372,17 @@ def _ensure_mock_modules() -> None:
                 return obj
 
         ra_models.KamereonVehicleBatterySocData = KamereonVehicleBatterySocData
+
+        class KamereonVehicleChargeModeData(KamereonVehicleDataAttributes):
+            chargeMode: str | None = None
+            @classmethod
+            def from_dict(cls, d):
+                obj = cls(raw_data=d)
+                obj.chargeMode = d.get("chargeMode")
+                return obj
+
+        ra_models.KamereonVehicleChargeModeData = KamereonVehicleChargeModeData
+
 
         ra_gigya = ModuleType("renault_api.gigya")
         ra_gigya.__path__ = []

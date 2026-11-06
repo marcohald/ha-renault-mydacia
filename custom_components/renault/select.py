@@ -94,7 +94,7 @@ SENSOR_TYPES: tuple[RenaultSelectEntityDescription, ...] = (
         translation_key="charge_mode",
         options=["always", "always_charging", "schedule_mode", "scheduled"],
         update_fn=lambda e, option: e.vehicle.set_charge_mode(option),
-        value_fn=lambda e: e.coordinator.data.chargeMode,
+        value_fn=lambda e: e.coordinator.data.chargeMode if e.coordinator.data else None,
     ),
     RenaultSelectEntityDescription[KamereonVehicleEvSettingsData](
         key="charge_mode_rq",
@@ -103,6 +103,6 @@ SENSOR_TYPES: tuple[RenaultSelectEntityDescription, ...] = (
         translation_key="charge_mode_rq",
         options=["SCHEDULED", "SMARTCHARGING_OFFPEAK", "V2G"],
         update_fn=_set_charge_mode_rq,
-        value_fn=lambda e: e.coordinator.data.chargeModeRq,
+        value_fn=lambda e: e.coordinator.data.chargeModeRq if e.coordinator.data else None,
     ),
 )

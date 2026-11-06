@@ -1,15 +1,16 @@
 {
   "domain": "renault",
-  "name": "Renault",
+  "name": "Renault / My Dacia",
   "categories": ["vehicles_transport.cars_evs"],
-  "codeowners": ["@epenet"],
+  "codeowners": ["@marcohald", "@epenet"],
   "config_flow": true,
   "connectivity": ["cloud"],
-  "documentation": "https://www.home-assistant.io/integrations/renault",
+  "documentation": "https://github.com/marcohald/ha-renault-mydacia",
+  "issue_tracker": "https://github.com/marcohald/ha-renault-mydacia/issues",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
   "loggers": ["renault_api"],
   "quality_scale": "platinum",
   "requirements": ["renault-api==0.6.2"],
-  "version": "1.1.0"
+  "version": "1.2.0"
 }

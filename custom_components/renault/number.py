@@ -173,7 +173,7 @@ NUMBER_TYPES: tuple[RenaultNumberEntityDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         mode=NumberMode.SLIDER,
         translation_key="charge_limit_min",
-        value_fn=lambda entity: entity.coordinator.data.socMin,
+        value_fn=lambda entity: entity.coordinator.data.socMin if entity.coordinator.data else None,
     ),
     RenaultNumberEntityDescription[KamereonVehicleBatterySocData](
         key="charge_limit_target",
@@ -187,7 +187,7 @@ NUMBER_TYPES: tuple[RenaultNumberEntityDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         mode=NumberMode.SLIDER,
         translation_key="charge_limit_target",
-        value_fn=lambda entity: entity.coordinator.data.socTarget,
+        value_fn=lambda entity: entity.coordinator.data.socTarget if entity.coordinator.data else None,
     ),
     RenaultNumberEntityDescription[KamereonVehicleEvSettingsData](
         key="preconditioning_temperature",
@@ -201,7 +201,7 @@ NUMBER_TYPES: tuple[RenaultNumberEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         mode=NumberMode.SLIDER,
         translation_key="preconditioning_temperature",
-        value_fn=lambda entity: entity.coordinator.data.preconditioningTemperature,
+        value_fn=lambda entity: entity.coordinator.data.preconditioningTemperature if entity.coordinator.data else None,
     ),
     RenaultNumberEntityDescription[KamereonVehicleEvSettingsData](
         key="charge_duration",
@@ -215,6 +215,6 @@ NUMBER_TYPES: tuple[RenaultNumberEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTime.MINUTES,
         mode=NumberMode.SLIDER,
         translation_key="charge_duration",
-        value_fn=lambda entity: entity.coordinator.data.chargeDuration,
+        value_fn=lambda entity: entity.coordinator.data.chargeDuration if entity.coordinator.data else None,
     ),
 )

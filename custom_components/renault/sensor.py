@@ -96,12 +96,16 @@ class RenaultSensor(RenaultDataEntity[T], SensorEntity, Generic[T]):
     @override
     def native_value(self) -> StateType | datetime:
         """Return the state of this entity."""
+        if not self.coordinator.data:
+            return None
         return self.entity_description.value_lambda(self)
 
     @property
     @override
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return optional state attributes of this entity."""
+        if not self.coordinator.data:
+            return None
         if self.entity_description.extra_attributes_lambda is not None:
             return self.entity_description.extra_attributes_lambda(self)
         return None
@@ -111,6 +115,8 @@ def _get_charge_state_formatted(
     entity: RenaultSensor[KamereonVehicleBatteryStatusData],
 ) -> str | None:
     """Return the charging_status of this entity."""
+    if not entity.coordinator.data:
+        return None
     charging_status = entity.coordinator.data.get_charging_status()
     return charging_status.name.lower() if charging_status else None
 
@@ -119,6 +125,8 @@ def _get_plug_state_formatted(
     entity: RenaultSensor[KamereonVehicleBatteryStatusData],
 ) -> str | None:
     """Return the plug_status of this entity."""
+    if not entity.coordinator.data:
+        return None
     plug_status = entity.coordinator.data.get_plug_status()
     return plug_status.name.lower() if plug_status else None
 
@@ -141,6 +149,8 @@ def _get_charging_settings_mode_formatted(
     entity: RenaultSensor[KamereonVehicleChargingSettingsData],
 ) -> str | None:
     """Return the charging_settings mode of this entity."""
+    if not entity.coordinator.data:
+        return None
     charging_mode = entity.coordinator.data.mode
     return charging_mode.lower() if charging_mode else None
 

@@ -80,7 +80,10 @@ class RenaultBinarySensor(RenaultDataEntity[T], BinarySensorEntity, Generic[T]):
     @override
     def is_on(self) -> bool | None:
         """Return true if the binary sensor is on."""
+        if not self.coordinator.data:
+            return None
         return self.entity_description.value_lambda(self)
+
 
 
 def _plugged_in_value_lambda(
