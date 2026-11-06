@@ -26,6 +26,10 @@ CHARGE_PAUSE_RESUME_ENDPOINT = models.EndpointDefinition(
     "/kcm/v1/vehicles/{vin}/charge/pause-resume", mode="kcm-pause-resume"
 )
 
+SOC_LEVELS_ENDPOINT = models.EndpointDefinition(
+    "/kcm/v1/vehicles/{vin}/ev/soc-levels", mode="kcm-soc-levels"
+)
+
 # Register XBG2DE (Dacia Spring Phase 2 / MY26) and XBG1VE (Phase 1)
 # in renault_api._VEHICLE_ENDPOINTS so that supports_endpoint() works
 # out of the box even before renault-api upstream adds them.
@@ -61,7 +65,7 @@ if "XBG2DE" not in models._VEHICLE_ENDPOINTS:
         "notification-settings": None,
         "pressure": None,
         "res-state": None,
-        "soc-levels": None,
+        "soc-levels": SOC_LEVELS_ENDPOINT,
     }
 
 if "XBG1VE" not in models._VEHICLE_ENDPOINTS:
@@ -206,7 +210,7 @@ def hvac_schedules_to_ev_programs(
     preserved_charge_programs: list[dict[str, Any]] = [
         p
         for p in (existing_programs or [])
-        if p.get("programType") == "CHARGE"
+        if p.get("programType") in ("CHARGE", "CHARGE_AND_PRECONDITIONING")
     ]
     new_programs: list[dict[str, Any]] = []
 
@@ -251,7 +255,7 @@ def charge_schedules_to_ev_programs(
     preserved_precond_programs: list[dict[str, Any]] = [
         p
         for p in (existing_programs or [])
-        if p.get("programType") == "PRECONDITIONING"
+        if p.get("programType") in ("PRECONDITIONING", "CHARGE_AND_PRECONDITIONING")
     ]
     new_programs: list[dict[str, Any]] = []
 

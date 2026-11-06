@@ -220,6 +220,46 @@ class RenaultHub:
 
         session._get_jwt = _oidc_get_jwt  # type: ignore[method-assign]
 
+    async def async_refresh_oidc_token(
+        self, config_entry: RenaultConfigEntry
+    ) -> str | None:
+        """Force refresh of the OIDC access token when a 401 is encountered."""
+        session = self._client.session
+        refresh_tok = config_entry.data.get(
+            RenaultConfigurationKeys.OIDC_REFRESH_TOKEN
+        )
+        if not refresh_tok:
+            return None
+        async with session._gigya_lock:
+            token_resp = await refresh_oidc_access_token(
+                self._websession,
+                refresh_token=str(refresh_tok),
+                client_id=str(
+                    config_entry.data.get(
+                        RenaultConfigurationKeys.OIDC_CLIENT_ID,
+                        OIDC_DEFAULT_CLIENT_ID,
+                    )
+                ),
+                token_url=str(
+                    config_entry.data.get(
+                        RenaultConfigurationKeys.OIDC_TOKEN_URL,
+                        OIDC_DEFAULT_TOKEN_URL,
+                    )
+                ),
+            )
+            new_access = token_resp["access_token"]
+            new_refresh = token_resp.get("refresh_token", refresh_tok)
+            session._credentials[GIGYA_JWT] = JWTCredential(new_access)
+            self._hass.config_entries.async_update_entry(
+                config_entry,
+                data={
+                    **config_entry.data,
+                    RenaultConfigurationKeys.OIDC_ACCESS_TOKEN: new_access,
+                    RenaultConfigurationKeys.OIDC_REFRESH_TOKEN: new_refresh,
+                },
+            )
+            return new_access
+
     async def async_login(self, config_entry: RenaultConfigEntry) -> None:
         """Log in with OIDC tokens, the stored Gigya login token, or fall back to password."""
         if config_entry.data.get(

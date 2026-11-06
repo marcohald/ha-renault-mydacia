@@ -116,6 +116,37 @@
       "preconditioning_temperature": {
         "default": "mdi:thermometer"
       }
+    },
+    "switch": {
+      "departure_program_1": {
+        "default": "mdi:calendar-clock"
+      },
+      "departure_program_2": {
+        "default": "mdi:calendar-clock"
+      },
+      "departure_program_3": {
+        "default": "mdi:calendar-clock"
+      },
+      "departure_program_4": {
+        "default": "mdi:calendar-clock"
+      },
+      "departure_program_5": {
+        "default": "mdi:calendar-clock"
+      },
+      "preconditioning_heated_steering_wheel": {
+        "default": "mdi:steering"
+      },
+      "preconditioning_heated_left_seat": {
+        "default": "mdi:car-seat-heater"
+      },
+      "preconditioning_heated_right_seat": {
+        "default": "mdi:car-seat-heater"
+      }
+    },
+    "time": {
+      "charge_time_start": {
+        "default": "mdi:clock-start"
+      }
     }
   },
   "services": {

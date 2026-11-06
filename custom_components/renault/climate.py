@@ -69,6 +69,13 @@ class RenaultClimateEntity(
             coordinator="hvac_status",
         )
         super().__init__(vehicle, description)
+        features = (
+            ClimateEntityFeature.TARGET_TEMPERATURE
+            | ClimateEntityFeature.TURN_ON
+        )
+        if vehicle.details.supports_endpoint("actions/hvac-stop"):
+            features |= ClimateEntityFeature.TURN_OFF
+        self._attr_supported_features = features
 
     @override
     async def async_added_to_hass(self) -> None:
@@ -142,6 +149,7 @@ class RenaultClimateEntity(
             await self.vehicle.set_ac_stop()
             if self.coordinator.data:
                 self.coordinator.data.hvacStatus = "off"
+                self.coordinator.assumed_state = True
                 self.coordinator.async_set_updated_data(self.coordinator.data)
             else:
                 await self.coordinator.async_request_refresh()
@@ -150,6 +158,7 @@ class RenaultClimateEntity(
             await self.vehicle.set_ac_start(tgt)
             if self.coordinator.data:
                 self.coordinator.data.hvacStatus = "on"
+                self.coordinator.assumed_state = True
                 self.coordinator.async_set_updated_data(self.coordinator.data)
             else:
                 await self.coordinator.async_request_refresh()

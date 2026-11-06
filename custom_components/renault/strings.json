@@ -30,12 +30,16 @@
       },
       "reauth_confirm": {
         "data": {
-          "password": "[%key:common::config_flow::data::password%]"
+          "password": "[%key:common::config_flow::data::password%]",
+          "oidc_refresh_token": "OIDC Refresh Token (optional)",
+          "oidc_access_token": "OIDC Access Token (optional)"
         },
         "data_description": {
-          "password": "Your MyRenault phone application password"
+          "password": "Your MyRenault / My Dacia password",
+          "oidc_refresh_token": "Refresh token from My Dacia / My Renault OIDC auth_state",
+          "oidc_access_token": "Bearer access token from My Dacia / My Renault OIDC auth_state"
         },
-        "description": "Please update your password for {username}",
+        "description": "Please update your credentials for {username}",
         "title": "[%key:common::config_flow::title::reauth%]"
       },
       "two_factor_code": {
@@ -274,6 +278,37 @@
       },
       "ev_settings_last_update": {
         "name": "Last EV settings update"
+      }
+    },
+    "switch": {
+      "departure_program_1": {
+        "name": "Departure program 1"
+      },
+      "departure_program_2": {
+        "name": "Departure program 2"
+      },
+      "departure_program_3": {
+        "name": "Departure program 3"
+      },
+      "departure_program_4": {
+        "name": "Departure program 4"
+      },
+      "departure_program_5": {
+        "name": "Departure program 5"
+      },
+      "preconditioning_heated_steering_wheel": {
+        "name": "Preconditioning heated steering wheel"
+      },
+      "preconditioning_heated_left_seat": {
+        "name": "Preconditioning heated driver seat"
+      },
+      "preconditioning_heated_right_seat": {
+        "name": "Preconditioning heated passenger seat"
+      }
+    },
+    "time": {
+      "charge_time_start": {
+        "name": "Scheduled charge start time"
       }
     }
   },

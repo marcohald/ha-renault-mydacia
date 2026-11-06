@@ -49,6 +49,12 @@ def with_error_wrapping(
         try:
             return await func(self, *args, **kwargs)
         except NotAuthenticatedException as err:
+            if self.config_entry.data.get(RenaultConfigurationKeys.OIDC_REFRESH_TOKEN):
+                try:
+                    await self._hub.async_refresh_oidc_token(self.config_entry)
+                    return await func(self, *args, **kwargs)
+                except Exception:
+                    pass
             self.config_entry.async_start_reauth(self.hass)
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
@@ -99,7 +105,10 @@ class RenaultVehicleProxy:
             manufacturer=(details.get_brand_label() or "").capitalize(),
             model=(details.get_model_label() or "").capitalize(),
             model_id=(details.get_model_code() or ""),
-            name=details.registrationNumber or "",
+            name=(
+                details.registrationNumber
+                or f"{details.get_brand_label() or 'Dacia'} {details.get_model_label() or 'Spring'}"
+            ),
         )
         self.coordinators: dict[str, RenaultDataUpdateCoordinator] = {}
         self.hvac_target_temperature = 21
@@ -251,10 +260,40 @@ class RenaultVehicleProxy:
         return res
 
     @with_error_wrapping
+    async def get_battery_soc(self) -> models.KamereonVehicleBatterySocData:
+        """Get vehicle battery SoC levels."""
+        if self.details.supports_endpoint("soc-levels"):
+            endpoint = self.details.get_endpoint("soc-levels")
+            if endpoint and getattr(endpoint, "mode", None) == "kcm-soc-levels":
+                response = await self._vehicle._get_vehicle_data(endpoint)
+                raw = response.raw_data or {}
+                attrs = raw.get("attributes", raw)
+                soc_min = attrs.get("socMin") if attrs.get("socMin") is not None else attrs.get("socMinLevel")
+                soc_target = attrs.get("socTarget") if attrs.get("socTarget") is not None else attrs.get("socTargetLevel")
+                return models.KamereonVehicleBatterySocData.from_dict({
+                    "socMin": soc_min,
+                    "socTarget": soc_target,
+                })
+        return await self._vehicle.get_battery_soc()
+
+    @with_error_wrapping
     async def set_battery_soc(
         self, min_soc: int, target_soc: int
     ) -> models.KamereonVehicleBatterySocActionData:
         """Set vehicle battery SoC levels."""
+        if self.details.supports_endpoint("soc-levels"):
+            endpoint = self.details.get_endpoint("soc-levels")
+            if endpoint and getattr(endpoint, "mode", None) == "kcm-soc-levels":
+                payload = {
+                    "socMinLevel": min_soc,
+                    "socTargetLevel": target_soc,
+                    "socMin": min_soc,
+                    "socTarget": target_soc,
+                }
+                res = await self._vehicle._set_vehicle_data(endpoint, payload)
+                if coord := self.coordinators.get("battery_soc"):
+                    await coord.async_request_refresh()
+                return res
         return await self._vehicle.set_battery_soc(min=min_soc, target=target_soc)
 
     @with_error_wrapping
@@ -372,6 +411,6 @@ COORDINATORS: tuple[RenaultCoordinatorDescription, ...] = (
         endpoint="soc-levels",
         key="battery_soc",
         requires_electricity=True,
-        update_method=lambda x: x._vehicle.get_battery_soc,
+        update_method=lambda x: x.get_battery_soc,
     ),
 )

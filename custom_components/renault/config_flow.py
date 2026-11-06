@@ -191,7 +191,7 @@ class RenaultFlowHandler(ConfigFlow, domain=DOMAIN):
             self.renault_config.update(user_input)
             return self.async_create_entry(
                 title=_mask_email(
-                    self.renault_config[RenaultConfigurationKeys.USERNAME]
+                    self.renault_config.get(RenaultConfigurationKeys.USERNAME, "")
                 ),
                 data=self.renault_config,
             )
