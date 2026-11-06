@@ -14,6 +14,7 @@ from homeassistant.helpers.service import async_get_device_and_config_entry
 
 from .const import DOMAIN
 from .ev_settings import (
+    charge_schedules_to_ev_programs,
     hvac_schedules_to_ev_programs,
     normalize_ev_program,
 )
@@ -33,8 +34,12 @@ class RenaultService(StrEnum):
     AC_START = "ac_start"
     CHARGE_SET_SCHEDULES = "charge_set_schedules"
     CHARGE_START = "charge_start"
+    CHARGE_STOP = "charge_stop"
     EV_CLEAR_SCHEDULES = "ev_clear_schedules"
     EV_SET_SCHEDULES = "ev_set_schedules"
+    FLASH_LIGHTS = "flash_lights"
+    REFRESH_LOCATION = "refresh_location"
+    SOUND_HORN = "sound_horn"
 
 
 class RenaultServiceArgument(StrEnum):
@@ -191,15 +196,34 @@ async def charge_start(service_call: ServiceCall) -> None:
 
     LOGGER.debug("Charge start attempt, when: %s", when)
     result = await proxy.set_charge_start(when)
-    LOGGER.debug("Charge start result: %s", result.raw_data)
+    LOGGER.debug("Charge start result: %s", getattr(result, "raw_data", result))
+
+
+async def charge_stop(service_call: ServiceCall) -> None:
+    """Stop Charging."""
+    proxy = get_vehicle_proxy(service_call)
+
+    LOGGER.debug("Charge stop attempt")
+    result = await proxy.set_charge_stop()
+    LOGGER.debug("Charge stop result: %s", getattr(result, "raw_data", result))
 
 
 async def charge_set_schedules(service_call: ServiceCall) -> None:
-    """Set charge schedules."""
+    """Set charge schedules (automatically routes to KCM /ev/settings on Phase 2 vehicles)."""
     schedules: list[dict[str, Any]] = service_call.data[
         RenaultServiceArgument.SCHEDULES
     ]
     proxy = get_vehicle_proxy(service_call)
+
+    if proxy.uses_kcm_ev_settings():
+        ev_settings = await proxy.get_ev_settings()
+        programs = charge_schedules_to_ev_programs(schedules, ev_settings.programs)
+        payload = ev_settings.to_post_body(programs=programs)
+        LOGGER.debug("KCM /ev/settings charge set schedules attempt: %s", payload)
+        result = await proxy.set_ev_settings(payload)
+        LOGGER.debug("KCM /ev/settings charge set schedules result: %s", result)
+        return
+
     charge_schedules = await proxy.get_charging_settings()
     for schedule in schedules:
         charge_schedules.update(schedule)
@@ -285,6 +309,27 @@ async def ev_clear_schedules(service_call: ServiceCall) -> None:
     LOGGER.debug("KCM /ev/settings clear schedules result: %s", result)
 
 
+async def sound_horn(service_call: ServiceCall) -> None:
+    """Sound vehicle horn."""
+    proxy = get_vehicle_proxy(service_call)
+    LOGGER.debug("Sound horn attempt")
+    await proxy.sound_horn()
+
+
+async def flash_lights(service_call: ServiceCall) -> None:
+    """Flash vehicle lights."""
+    proxy = get_vehicle_proxy(service_call)
+    LOGGER.debug("Flash lights attempt")
+    await proxy.flash_lights()
+
+
+async def refresh_location(service_call: ServiceCall) -> None:
+    """Request immediate GPS refresh from the vehicle."""
+    proxy = get_vehicle_proxy(service_call)
+    LOGGER.debug("Refresh location attempt")
+    await proxy.refresh_location()
+
+
 def get_vehicle_proxy(service_call: ServiceCall) -> RenaultVehicleProxy:
     """Get vehicle from service_call data."""
     device_id: str = service_call.data[RenaultServiceArgument.VEHICLE]
@@ -326,6 +371,12 @@ def async_setup_services(hass: HomeAssistant) -> None:
     )
     hass.services.async_register(
         DOMAIN,
+        RenaultService.CHARGE_STOP,
+        charge_stop,
+        schema=SERVICE_VEHICLE_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
         RenaultService.CHARGE_SET_SCHEDULES,
         charge_set_schedules,
         schema=SERVICE_CHARGE_SET_SCHEDULES_SCHEMA,
@@ -346,5 +397,23 @@ def async_setup_services(hass: HomeAssistant) -> None:
         DOMAIN,
         RenaultService.EV_CLEAR_SCHEDULES,
         ev_clear_schedules,
+        schema=SERVICE_VEHICLE_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        RenaultService.SOUND_HORN,
+        sound_horn,
+        schema=SERVICE_VEHICLE_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        RenaultService.FLASH_LIGHTS,
+        flash_lights,
+        schema=SERVICE_VEHICLE_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        RenaultService.REFRESH_LOCATION,
+        refresh_location,
         schema=SERVICE_VEHICLE_SCHEMA,
     )

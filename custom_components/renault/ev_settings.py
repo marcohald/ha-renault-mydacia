@@ -22,14 +22,19 @@ EV_SETTINGS_ENDPOINT = models.EndpointDefinition(
     "/kcm/v1/vehicles/{vin}/ev/settings", mode="kcm-settings"
 )
 
-# Register XBG2DE (Dacia Spring Phase 2 / MY26) in renault_api._VEHICLE_ENDPOINTS
-# so that supports_endpoint() works out of the box even before renault-api adds it.
+CHARGE_PAUSE_RESUME_ENDPOINT = models.EndpointDefinition(
+    "/kcm/v1/vehicles/{vin}/charge/pause-resume", mode="kcm-pause-resume"
+)
+
+# Register XBG2DE (Dacia Spring Phase 2 / MY26) and XBG1VE (Phase 1)
+# in renault_api._VEHICLE_ENDPOINTS so that supports_endpoint() works
+# out of the box even before renault-api upstream adds them.
 if "XBG2DE" not in models._VEHICLE_ENDPOINTS:
     models._VEHICLE_ENDPOINTS["XBG2DE"] = {
         "actions/charge-set-mode": None,
         "actions/charge-set-schedule": EV_SETTINGS_ENDPOINT,
-        "actions/charge-start": EV_SETTINGS_ENDPOINT,
-        "actions/charge-stop": None,
+        "actions/charge-start": CHARGE_PAUSE_RESUME_ENDPOINT,
+        "actions/charge-stop": CHARGE_PAUSE_RESUME_ENDPOINT,
         "actions/horn-start": models._DEFAULT_ENDPOINTS["actions/horn-start"],
         "actions/hvac-set-schedule": EV_SETTINGS_ENDPOINT,
         "actions/hvac-start": models._DEFAULT_ENDPOINTS["actions/hvac-start"],
@@ -58,6 +63,9 @@ if "XBG2DE" not in models._VEHICLE_ENDPOINTS:
         "res-state": None,
         "soc-levels": None,
     }
+
+if "XBG1VE" not in models._VEHICLE_ENDPOINTS:
+    models._VEHICLE_ENDPOINTS["XBG1VE"] = models._VEHICLE_ENDPOINTS["XBG2DE"]
 
 
 def normalize_departure_time(time_str: str) -> str:
@@ -223,6 +231,50 @@ def hvac_schedules_to_ev_programs(
             new_programs.append(prog)
 
     return (preserved_charge_programs + new_programs)[:5]
+
+
+def charge_schedules_to_ev_programs(
+    schedules: list[dict[str, Any]],
+    existing_programs: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Convert Home Assistant `renault.charge_set_schedules` input to KCM `EvProgramSchema` list.
+
+    In the legacy `charge_set_schedules` service, each schedule item has:
+      - `id`: 1..5
+      - `activated`: bool
+      - `monday`..`sunday`: `{"startTime": "T12:00Z", "duration": 15}`
+
+    In KCM `/ev/settings`, each `EvProgramSchema` has a single `programDepartureTime` ("HH:MM")
+    and boolean day flags (`programActivationMonday`..`programActivationSunday`).
+    Existing `PRECONDITIONING`-only programs are preserved unless overwritten.
+    """
+    preserved_precond_programs: list[dict[str, Any]] = [
+        p
+        for p in (existing_programs or [])
+        if p.get("programType") == "PRECONDITIONING"
+    ]
+    new_programs: list[dict[str, Any]] = []
+
+    for sched in schedules:
+        activated = bool(sched.get("activated", True))
+        time_to_days: dict[str, set[str]] = {}
+        for day_name, _ in DAYS_OF_WEEK_KEYS:
+            day_cfg = sched.get(day_name)
+            if isinstance(day_cfg, dict) and day_cfg.get("startTime"):
+                norm_time = normalize_departure_time(day_cfg["startTime"])
+                time_to_days.setdefault(norm_time, set()).add(day_name)
+
+        for dep_time, active_days in time_to_days.items():
+            prog: dict[str, Any] = {
+                "programActivationStatus": activated,
+                "programType": "CHARGE",
+                "programDepartureTime": dep_time,
+            }
+            for day_name, api_key in DAYS_OF_WEEK_KEYS:
+                prog[api_key] = day_name in active_days
+            new_programs.append(prog)
+
+    return (preserved_precond_programs + new_programs)[:5]
 
 
 def normalize_ev_program(program_input: dict[str, Any]) -> dict[str, Any]:

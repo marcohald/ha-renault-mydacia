@@ -227,38 +227,84 @@ class RenaultFlowHandler(ConfigFlow, domain=DOMAIN):
         """Dialog that informs the user that reauth is required."""
         errors: dict[str, str] = {}
         reauth_entry = self._get_reauth_entry()
+        username = (
+            reauth_entry.data.get(RenaultConfigurationKeys.USERNAME)
+            or reauth_entry.title
+            or "My Dacia"
+        )
         if user_input:
-            self.renault_config.update(user_input)
-            self.renault_hub = RenaultHub(
-                self.hass, reauth_entry.data[RenaultConfigurationKeys.LOCALE]
-            )
-            self.renault_hub.set_device_ids(
-                reauth_entry.data.get(RenaultConfigurationKeys.DEVICE_IDS, {})
-            )
-            try:
-                login_success = await self.renault_hub.attempt_login(
-                    reauth_entry.data[RenaultConfigurationKeys.USERNAME],
-                    user_input[RenaultConfigurationKeys.PASSWORD],
+            oidc_refresh = user_input.get(
+                RenaultConfigurationKeys.OIDC_REFRESH_TOKEN, ""
+            ).strip()
+            oidc_access = user_input.get(
+                RenaultConfigurationKeys.OIDC_ACCESS_TOKEN, ""
+            ).strip()
+            password = user_input.get(
+                RenaultConfigurationKeys.PASSWORD, ""
+            ).strip()
+
+            if oidc_refresh or oidc_access:
+                from renault_api.credential import JWTCredential
+
+                self.renault_hub = RenaultHub(
+                    self.hass, reauth_entry.data.get(RenaultConfigurationKeys.LOCALE, "de_DE")
                 )
-            except PendingTwoFactorAuthenticationException:
-                return await self.async_step_two_factor_email()
-            except (aiohttp.ClientError, GigyaException):
-                errors["base"] = "cannot_connect"
-            except Exception:
-                _LOGGER.exception("Unexpected exception")
-                errors["base"] = "unknown"
+                try:
+                    if oidc_refresh and not oidc_access:
+                        token_resp = await refresh_oidc_access_token(
+                            self.renault_hub._websession,
+                            refresh_token=oidc_refresh,
+                        )
+                        oidc_access = token_resp["access_token"]
+                        oidc_refresh = token_resp.get("refresh_token", oidc_refresh)
+                    clean_tok = oidc_access.removeprefix("Bearer ").strip()
+                    jwt_cred = JWTCredential(clean_tok)
+                    jwt_cred.get_claims()
+                    self.renault_config[
+                        RenaultConfigurationKeys.OIDC_ACCESS_TOKEN
+                    ] = clean_tok
+                    if oidc_refresh:
+                        self.renault_config[
+                            RenaultConfigurationKeys.OIDC_REFRESH_TOKEN
+                        ] = oidc_refresh
+                    return self.async_update_reload_and_abort(
+                        reauth_entry, data_updates=self.renault_config
+                    )
+                except Exception as ex:
+                    _LOGGER.warning("OIDC re-authentication error: %s", ex)
+                    errors["base"] = "invalid_credentials"
+            elif password and reauth_entry.data.get(RenaultConfigurationKeys.USERNAME):
+                self.renault_config.update(user_input)
+                self.renault_hub = RenaultHub(
+                    self.hass, reauth_entry.data[RenaultConfigurationKeys.LOCALE]
+                )
+                self.renault_hub.set_device_ids(
+                    reauth_entry.data.get(RenaultConfigurationKeys.DEVICE_IDS, {})
+                )
+                try:
+                    login_success = await self.renault_hub.attempt_login(
+                        reauth_entry.data[RenaultConfigurationKeys.USERNAME],
+                        password,
+                    )
+                except PendingTwoFactorAuthenticationException:
+                    return await self.async_step_two_factor_email()
+                except (aiohttp.ClientError, GigyaException):
+                    errors["base"] = "cannot_connect"
+                except Exception:
+                    _LOGGER.exception("Unexpected exception")
+                    errors["base"] = "unknown"
+                else:
+                    if login_success:
+                        return await self._async_login_complete()
+                    errors["base"] = "invalid_credentials"
             else:
-                if login_success:
-                    return await self._async_login_complete()
                 errors["base"] = "invalid_credentials"
 
         return self.async_show_form(
             step_id="reauth_confirm",
             data_schema=REAUTH_SCHEMA,
             errors=errors,
-            description_placeholders={
-                "username": reauth_entry.data[RenaultConfigurationKeys.USERNAME]
-            },
+            description_placeholders={"username": username},
         )
 
     async def async_step_two_factor_email(

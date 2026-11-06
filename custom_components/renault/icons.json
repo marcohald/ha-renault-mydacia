@@ -15,11 +15,17 @@
       "flash_lights": {
         "default": "mdi:lightbulb-on"
       },
+      "refresh_location": {
+        "default": "mdi:crosshairs-gps"
+      },
       "sound_horn": {
         "default": "mdi:bugle"
       },
       "start_air_conditioner": {
         "default": "mdi:air-conditioner"
+      },
+      "stop_air_conditioner": {
+        "default": "mdi:fan-off"
       },
       "start_charge": {
         "default": "mdi:ev-station"
@@ -128,11 +134,23 @@
     "charge_start": {
       "service": "mdi:ev-station"
     },
+    "charge_stop": {
+      "service": "mdi:ev-station"
+    },
     "ev_clear_schedules": {
       "service": "mdi:calendar-remove"
     },
     "ev_set_schedules": {
       "service": "mdi:calendar-clock"
+    },
+    "flash_lights": {
+      "service": "mdi:lightbulb-on"
+    },
+    "refresh_location": {
+      "service": "mdi:crosshairs-gps"
+    },
+    "sound_horn": {
+      "service": "mdi:bugle"
     }
   }
 }

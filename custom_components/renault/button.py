@@ -58,12 +58,22 @@ class RenaultButtonEntity(RenaultEntity, ButtonEntity):
 
 BUTTON_TYPES: tuple[RenaultButtonEntityDescription, ...] = (
     RenaultButtonEntityDescription(
-        async_press=lambda x: x.vehicle.set_ac_start(21, None),
+        async_press=lambda x: x.vehicle.set_ac_start(
+            x.vehicle.hvac_target_temperature, None
+        ),
         key="start_air_conditioner",
         is_supported=lambda vehicle: vehicle.details.supports_endpoint(
             "actions/hvac-start"
         ),
         translation_key="start_air_conditioner",
+    ),
+    RenaultButtonEntityDescription(
+        async_press=lambda x: x.vehicle.set_ac_stop(),
+        key="stop_air_conditioner",
+        is_supported=lambda vehicle: vehicle.details.supports_endpoint(
+            "actions/hvac-stop"
+        ),
+        translation_key="stop_air_conditioner",
     ),
     RenaultButtonEntityDescription(
         async_press=lambda x: x.vehicle.set_charge_start(),
@@ -98,6 +108,14 @@ BUTTON_TYPES: tuple[RenaultButtonEntityDescription, ...] = (
             "actions/lights-start"
         ),
         translation_key="flash_lights",
+    ),
+    RenaultButtonEntityDescription(
+        async_press=lambda x: x.vehicle.refresh_location(),
+        key="refresh_location",
+        is_supported=lambda vehicle: vehicle.details.supports_endpoint(
+            "actions/refresh-location"
+        ),
+        translation_key="refresh_location",
     ),
     RenaultButtonEntityDescription(
         async_press=lambda x: _clear_ev_schedules(x),

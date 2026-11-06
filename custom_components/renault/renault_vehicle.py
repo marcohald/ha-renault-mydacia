@@ -179,6 +179,7 @@ class RenaultVehicleProxy:
                 )
                 del self.coordinators[key]
 
+    @with_error_wrapping
     async def get_ev_settings(self) -> KamereonVehicleEvSettingsData:
         """Fetch KCM /ev/settings for Phase 2 / C1AH2 vehicles."""
         response = await self._vehicle._get_vehicle_data(EV_SETTINGS_ENDPOINT)
@@ -210,12 +211,44 @@ class RenaultVehicleProxy:
         self, when: datetime | None = None
     ) -> models.KamereonVehicleChargingStartActionData:
         """Start vehicle charge."""
-        return await self._vehicle.set_charge_start(when)
+        if self.details.supports_endpoint("actions/charge-start"):
+            endpoint = self.details.get_endpoint("actions/charge-start")
+            if endpoint and getattr(endpoint, "mode", None) == "kcm-pause-resume":
+                payload = {
+                    "data": {
+                        "type": "ChargePauseResume",
+                        "attributes": {"action": "resume"},
+                    }
+                }
+                res = await self._vehicle._set_vehicle_data(endpoint, payload)
+                if coord := self.coordinators.get("battery"):
+                    await coord.async_request_refresh()
+                return res
+        res = await self._vehicle.set_charge_start(when)
+        if coord := self.coordinators.get("battery"):
+            await coord.async_request_refresh()
+        return res
 
     @with_error_wrapping
     async def set_charge_stop(self) -> models.KamereonVehicleChargingStartActionData:
         """Stop vehicle charge."""
-        return await self._vehicle.set_charge_stop()
+        if self.details.supports_endpoint("actions/charge-stop"):
+            endpoint = self.details.get_endpoint("actions/charge-stop")
+            if endpoint and getattr(endpoint, "mode", None) == "kcm-pause-resume":
+                payload = {
+                    "data": {
+                        "type": "ChargePauseResume",
+                        "attributes": {"action": "pause"},
+                    }
+                }
+                res = await self._vehicle._set_vehicle_data(endpoint, payload)
+                if coord := self.coordinators.get("battery"):
+                    await coord.async_request_refresh()
+                return res
+        res = await self._vehicle.set_charge_stop()
+        if coord := self.coordinators.get("battery"):
+            await coord.async_request_refresh()
+        return res
 
     @with_error_wrapping
     async def set_battery_soc(
@@ -269,6 +302,15 @@ class RenaultVehicleProxy:
     async def flash_lights(self) -> None:
         """Start vehicle lights."""
         await self._vehicle.start_lights()
+
+    @with_error_wrapping
+    async def refresh_location(self) -> None:
+        """Request immediate GPS refresh from the vehicle."""
+        endpoint = self.details.get_endpoint("actions/refresh-location")
+        if endpoint:
+            await self._vehicle._set_vehicle_data(endpoint, {})
+            if coord := self.coordinators.get("location"):
+                await coord.async_request_refresh()
 
 
 COORDINATORS: tuple[RenaultCoordinatorDescription, ...] = (

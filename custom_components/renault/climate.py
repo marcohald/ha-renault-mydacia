@@ -70,10 +70,23 @@ class RenaultClimateEntity(
         )
         super().__init__(vehicle, description)
 
+    @override
+    async def async_added_to_hass(self) -> None:
+        """Register callbacks when added to hass."""
+        await super().async_added_to_hass()
+        if "ev_settings" in self.vehicle.coordinators:
+            self.async_on_remove(
+                self.vehicle.coordinators["ev_settings"].async_add_listener(
+                    self.async_write_ha_state
+                )
+            )
+
     @property
     @override
     def current_temperature(self) -> float | None:
         """Return the current inside temperature."""
+        if not self.coordinator.data:
+            return None
         return self.coordinator.data.internalTemperature
 
     @property
@@ -90,6 +103,8 @@ class RenaultClimateEntity(
     @override
     def hvac_mode(self) -> HVACMode:
         """Return current HVAC mode."""
+        if not self.coordinator.data:
+            return HVACMode.OFF
         status = (self.coordinator.data.hvacStatus or "").lower()
         if status in ("on", "running", "active", "true"):
             return HVACMode.HEAT_COOL
@@ -111,17 +126,33 @@ class RenaultClimateEntity(
         return HVACAction.HEATING
 
     @override
+    async def async_turn_on(self) -> None:
+        """Turn on preconditioning."""
+        await self.async_set_hvac_mode(HVACMode.HEAT_COOL)
+
+    @override
+    async def async_turn_off(self) -> None:
+        """Turn off preconditioning."""
+        await self.async_set_hvac_mode(HVACMode.OFF)
+
+    @override
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new target HVAC mode."""
         if hvac_mode == HVACMode.OFF:
             await self.vehicle.set_ac_stop()
-            self.coordinator.data.hvacStatus = "off"
-            self.coordinator.async_set_updated_data(self.coordinator.data)
+            if self.coordinator.data:
+                self.coordinator.data.hvacStatus = "off"
+                self.coordinator.async_set_updated_data(self.coordinator.data)
+            else:
+                await self.coordinator.async_request_refresh()
         elif hvac_mode in (HVACMode.HEAT_COOL, HVACMode.HEAT, HVACMode.COOL):
             tgt = self.target_temperature or 21.0
             await self.vehicle.set_ac_start(tgt)
-            self.coordinator.data.hvacStatus = "on"
-            self.coordinator.async_set_updated_data(self.coordinator.data)
+            if self.coordinator.data:
+                self.coordinator.data.hvacStatus = "on"
+                self.coordinator.async_set_updated_data(self.coordinator.data)
+            else:
+                await self.coordinator.async_request_refresh()
 
     @override
     async def async_set_temperature(self, **kwargs: Any) -> None:

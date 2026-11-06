@@ -75,10 +75,8 @@ async def kamereon_request_with_bearer(
     OIDC tokens and legacy Gigya JWTs work seamlessly.
     """
     schema = schema or schemas.KamereonResponseSchema
-    is_kcm_ev_settings = "/kcm/" in url and "/ev/settings" in url
-    content_type = (
-        "application/json" if is_kcm_ev_settings else "application/vnd.api+json"
-    )
+    is_kcm = "/kcm/" in url
+    content_type = "application/json" if is_kcm else "application/vnd.api+json"
     bearer_val = (
         gigya_jwt
         if gigya_jwt.startswith("Bearer ")
@@ -90,11 +88,9 @@ async def kamereon_request_with_bearer(
         "Content-type": content_type,
         "Accept": "application/json",
         "apikey": api_key,
+        "Authorization": bearer_val,
+        "x-gigya-id_token": raw_token,
     }
-    if gigya_jwt.startswith("Bearer "):
-        headers["Authorization"] = gigya_jwt
-    else:
-        headers["x-gigya-id_token"] = gigya_jwt
     async with websession.request(
         method,
         url,

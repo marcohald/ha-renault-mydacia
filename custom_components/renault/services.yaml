@@ -187,3 +187,35 @@ ev_clear_schedules:
       selector:
         device:
           integration: renault
+
+charge_stop:
+  fields:
+    vehicle:
+      required: true
+      selector:
+        device:
+          integration: renault
+
+sound_horn:
+  fields:
+    vehicle:
+      required: true
+      selector:
+        device:
+          integration: renault
+
+flash_lights:
+  fields:
+    vehicle:
+      required: true
+      selector:
+        device:
+          integration: renault
+
+refresh_location:
+  fields:
+    vehicle:
+      required: true
+      selector:
+        device:
+          integration: renault

@@ -105,11 +105,17 @@
       "flash_lights": {
         "name": "Flash lights"
       },
+      "refresh_location": {
+        "name": "Refresh location"
+      },
       "sound_horn": {
         "name": "Sound horn"
       },
       "start_air_conditioner": {
         "name": "Start air conditioner"
+      },
+      "stop_air_conditioner": {
+        "name": "Stop air conditioner"
       },
       "start_charge": {
         "name": "Start charge"
@@ -443,6 +449,46 @@
         }
       },
       "name": "Clear EV & heating departure schedules"
+    },
+    "charge_stop": {
+      "description": "Stops charging on vehicle.",
+      "fields": {
+        "vehicle": {
+          "description": "[%key:component::renault::services::ac_start::fields::vehicle::description%]",
+          "name": "Vehicle"
+        }
+      },
+      "name": "Stop charging"
+    },
+    "sound_horn": {
+      "description": "Sounds the vehicle horn.",
+      "fields": {
+        "vehicle": {
+          "description": "[%key:component::renault::services::ac_start::fields::vehicle::description%]",
+          "name": "Vehicle"
+        }
+      },
+      "name": "Sound horn"
+    },
+    "flash_lights": {
+      "description": "Flashes the vehicle headlights.",
+      "fields": {
+        "vehicle": {
+          "description": "[%key:component::renault::services::ac_start::fields::vehicle::description%]",
+          "name": "Vehicle"
+        }
+      },
+      "name": "Flash lights"
+    },
+    "refresh_location": {
+      "description": "Requests an immediate GPS location refresh from the vehicle.",
+      "fields": {
+        "vehicle": {
+          "description": "[%key:component::renault::services::ac_start::fields::vehicle::description%]",
+          "name": "Vehicle"
+        }
+      },
+      "name": "Refresh location"
     }
   }
 }
