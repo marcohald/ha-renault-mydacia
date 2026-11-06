@@ -36,6 +36,7 @@ COOLING_UPDATES_SECONDS = 60 * 15  # 15 minutes
 PLATFORMS = [
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
+    Platform.CLIMATE,
     Platform.DEVICE_TRACKER,
     Platform.NUMBER,
     Platform.SELECT,

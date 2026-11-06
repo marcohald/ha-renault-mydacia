@@ -118,17 +118,28 @@
         "name": "Stop charge"
       }
     },
+    "climate": {
+      "preconditioning": {
+        "name": "Preconditioning"
+      }
+    },
     "device_tracker": {
       "location": {
         "name": "[%key:common::config_flow::data::location%]"
       }
     },
     "number": {
+      "charge_duration": {
+        "name": "Scheduled charge duration"
+      },
       "charge_limit_min": {
         "name": "Minimum charge level"
       },
       "charge_limit_target": {
         "name": "Target charge level"
+      },
+      "preconditioning_temperature": {
+        "name": "Target preconditioning temperature"
       }
     },
     "select": {
@@ -139,6 +150,14 @@
           "always_charging": "Always charging",
           "schedule_mode": "Schedule mode",
           "scheduled": "Scheduled"
+        }
+      },
+      "charge_mode_rq": {
+        "name": "Charge mode request",
+        "state": {
+          "SCHEDULED": "Scheduled",
+          "SMARTCHARGING_OFFPEAK": "Smart charging (off-peak)",
+          "V2G": "Vehicle to grid (V2G)"
         }
       }
     },

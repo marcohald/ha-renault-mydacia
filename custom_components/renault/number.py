@@ -18,7 +18,12 @@ from homeassistant.components.number import (
     NumberEntityDescription,
     NumberMode,
 )
-from homeassistant.const import PERCENTAGE, EntityCategory
+from homeassistant.const import (
+    PERCENTAGE,
+    EntityCategory,
+    UnitOfTemperature,
+    UnitOfTime,
+)
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -26,6 +31,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from . import RenaultConfigEntry
 from .const import DOMAIN
 from .entity import RenaultDataEntity, RenaultDataEntityDescription
+from .ev_settings import KamereonVehicleEvSettingsData
 from .renault_vehicle import RenaultVehicleProxy
 
 # Coordinator is used to centralize the data updates
@@ -127,6 +133,31 @@ class RenaultNumberEntity(RenaultDataEntity[T], NumberEntity, Generic[T]):
         await self.entity_description.update_fn(self, value)
 
 
+async def _set_preconditioning_temperature(
+    entity: RenaultNumberEntity[KamereonVehicleEvSettingsData], value: float
+) -> None:
+    """Set the target preconditioning temperature in KCM ev/settings."""
+    ev_settings = await entity.vehicle.get_ev_settings()
+    payload = ev_settings.to_post_body(preconditioning_temperature=value)
+    await entity.vehicle.set_ev_settings(payload)
+    entity.vehicle.hvac_target_temperature = value
+    entity.coordinator.data.preconditioningTemperature = value
+    entity.coordinator.assumed_state = True
+    entity.coordinator.async_set_updated_data(entity.coordinator.data)
+
+
+async def _set_charge_duration(
+    entity: RenaultNumberEntity[KamereonVehicleEvSettingsData], value: float
+) -> None:
+    """Set the scheduled charge duration in KCM ev/settings."""
+    ev_settings = await entity.vehicle.get_ev_settings()
+    payload = ev_settings.to_post_body(charge_duration=int(value))
+    await entity.vehicle.set_ev_settings(payload)
+    entity.coordinator.data.chargeDuration = int(value)
+    entity.coordinator.assumed_state = True
+    entity.coordinator.async_set_updated_data(entity.coordinator.data)
+
+
 NUMBER_TYPES: tuple[RenaultNumberEntityDescription, ...] = (
     RenaultNumberEntityDescription[KamereonVehicleBatterySocData](
         key="charge_limit_min",
@@ -155,5 +186,33 @@ NUMBER_TYPES: tuple[RenaultNumberEntityDescription, ...] = (
         mode=NumberMode.SLIDER,
         translation_key="charge_limit_target",
         value_fn=lambda entity: entity.coordinator.data.socTarget,
+    ),
+    RenaultNumberEntityDescription[KamereonVehicleEvSettingsData](
+        key="preconditioning_temperature",
+        entity_category=EntityCategory.CONFIG,
+        coordinator="ev_settings",
+        update_fn=_set_preconditioning_temperature,
+        device_class=NumberDeviceClass.TEMPERATURE,
+        native_min_value=16.0,
+        native_max_value=28.0,
+        native_step=0.5,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        mode=NumberMode.SLIDER,
+        translation_key="preconditioning_temperature",
+        value_fn=lambda entity: entity.coordinator.data.preconditioningTemperature,
+    ),
+    RenaultNumberEntityDescription[KamereonVehicleEvSettingsData](
+        key="charge_duration",
+        entity_category=EntityCategory.CONFIG,
+        coordinator="ev_settings",
+        update_fn=_set_charge_duration,
+        device_class=NumberDeviceClass.DURATION,
+        native_min_value=15,
+        native_max_value=1440,
+        native_step=15,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        mode=NumberMode.SLIDER,
+        translation_key="charge_duration",
+        value_fn=lambda entity: entity.coordinator.data.chargeDuration,
     ),
 )

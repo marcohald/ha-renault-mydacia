@@ -28,9 +28,28 @@
         "default": "mdi:ev-station"
       }
     },
+    "climate": {
+      "preconditioning": {
+        "default": "mdi:hvac"
+      }
+    },
     "device_tracker": {
       "location": {
         "default": "mdi:car"
+      }
+    },
+    "number": {
+      "charge_duration": {
+        "default": "mdi:timer-outline"
+      },
+      "charge_limit_min": {
+        "default": "mdi:battery-arrow-down"
+      },
+      "charge_limit_target": {
+        "default": "mdi:battery-arrow-up"
+      },
+      "preconditioning_temperature": {
+        "default": "mdi:thermometer"
       }
     },
     "select": {
@@ -39,6 +58,14 @@
         "state": {
           "schedule_mode": "mdi:calendar-clock",
           "scheduled": "mdi:calendar-clock"
+        }
+      },
+      "charge_mode_rq": {
+        "default": "mdi:ev-station",
+        "state": {
+          "SCHEDULED": "mdi:calendar-clock",
+          "SMARTCHARGING_OFFPEAK": "mdi:clock-check-outline",
+          "V2G": "mdi:transmission-tower"
         }
       }
     },
