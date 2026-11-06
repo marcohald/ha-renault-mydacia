@@ -1,4 +1,6 @@
 """Support for Renault device trackers."""
+from __future__ import annotations
+
 
 from dataclasses import dataclass
 from typing import override

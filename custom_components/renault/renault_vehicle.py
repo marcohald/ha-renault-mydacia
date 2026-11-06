@@ -1,5 +1,5 @@
-from typing import ParamSpec, TypeVar
 """Proxy to handle account communication with Renault servers."""
+from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable, Coroutine
@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from functools import wraps
 import logging
-from typing import TYPE_CHECKING, Any, Concatenate, cast
+from typing import TYPE_CHECKING, Any, Concatenate, ParamSpec, TypeVar, cast
 
 from renault_api.exceptions import NotAuthenticatedException, RenaultException
 from renault_api.kamereon import models
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from . import RenaultConfigEntry
     from .renault_hub import RenaultHub
 
-from .const import DOMAIN
+from .const import DOMAIN, RenaultConfigurationKeys
 from .coordinator import RenaultDataUpdateCoordinator
 from .ev_settings import (
     EV_SETTINGS_ENDPOINT,

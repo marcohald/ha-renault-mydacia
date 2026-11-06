@@ -106,6 +106,10 @@ async def kamereon_request_with_bearer(
             http_response.url,
             response_text,
         )
+        if http_response.status == 401:
+            raise NotAuthenticatedException(
+                f"Kamereon HTTP 401 Unauthorized: {response_text}"
+            )
         if response_text.startswith("["):
             response_text = f'{{"{wrap_array_in or "items"}": {response_text}}}'
 

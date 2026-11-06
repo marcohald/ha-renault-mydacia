@@ -1,4 +1,6 @@
 """Support for Renault devices."""
+from __future__ import annotations
+
 
 import aiohttp
 from renault_api.exceptions import NotAuthenticatedException

@@ -210,6 +210,8 @@ class RenaultPreconditioningHeaterSwitchEntity(
         kwargs = {self.arg_key: state}
         payload = ev_settings.to_post_body(**kwargs)
         await self.vehicle.set_ev_settings(payload)
-        setattr(self.coordinator.data, self.attr_key, state)
+        if self.coordinator.data:
+            setattr(self.coordinator.data, self.attr_key, state)
         self.coordinator.assumed_state = True
         self.async_write_ha_state()
+

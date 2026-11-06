@@ -75,6 +75,7 @@ class RenaultChargeStartTimeEntity(
         ev_settings = await self.vehicle.get_ev_settings()
         payload = ev_settings.to_post_body(charge_time_start=formatted_time)
         await self.vehicle.set_ev_settings(payload)
-        self.coordinator.data.chargeTimeStart = formatted_time
+        if self.coordinator.data:
+            self.coordinator.data.chargeTimeStart = formatted_time
         self.coordinator.assumed_state = True
         self.async_write_ha_state()

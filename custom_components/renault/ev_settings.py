@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+
+try:
+    from datetime import UTC
+except ImportError:
+    UTC = timezone.utc
 from typing import Any
 
 from renault_api.kamereon import models
@@ -93,6 +98,7 @@ def normalize_departure_time(time_str: str) -> str:
 class KamereonVehicleEvSettingsData(models.KamereonVehicleDataAttributes):
     """Kamereon vehicle data ev/settings attributes."""
 
+    raw_data: dict[str, Any] = field(default_factory=dict)
     lastSettingsUpdateTimestamp: str | None = None
     delegatedActivated: bool | None = None
     chargeModeRq: str | None = None

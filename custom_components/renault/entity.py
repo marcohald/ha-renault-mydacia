@@ -1,4 +1,6 @@
 """Base classes for Renault entities."""
+from __future__ import annotations
+
 from typing import Generic, TypeVar, Any
 T = TypeVar('T', bound=Any)
 

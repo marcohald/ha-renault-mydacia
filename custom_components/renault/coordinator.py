@@ -1,4 +1,6 @@
 """Proxy to handle account communication with Renault servers."""
+from __future__ import annotations
+
 from typing import Generic, TypeVar, Any
 T = TypeVar('T', bound=Any)
 
@@ -26,7 +28,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, VEHICLE_LIST_SCAN_INTERVAL
+from .const import DOMAIN, VEHICLE_LIST_SCAN_INTERVAL, RenaultConfigurationKeys
 
 if TYPE_CHECKING:
     from . import RenaultConfigEntry
@@ -64,12 +66,15 @@ class RenaultDataUpdateCoordinator(DataUpdateCoordinator[T], Generic[T]):
             update_interval=update_interval,
             update_method=update_method,
         )
+        self.config_entry = config_entry
+
         self.access_denied = False
         self.not_supported = False
         self.assumed_state = False
 
         self._has_already_worked = False
         self._hub = hub
+
 
     @override
     async def _async_update_data(self) -> T:
@@ -126,6 +131,13 @@ class RenaultDataUpdateCoordinator(DataUpdateCoordinator[T], Generic[T]):
             ) from err
 
         except NotAuthenticatedException as err:
+            if self.config_entry.data.get(RenaultConfigurationKeys.OIDC_REFRESH_TOKEN):
+                try:
+                    await self._hub.async_refresh_oidc_token(self.config_entry)
+                    async with _PARALLEL_SEMAPHORE:
+                        return await self.update_method()
+                except Exception:
+                    pass
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN,
                 translation_key="authentication_expired",
