@@ -3,7 +3,11 @@
 from renault_api.kamereon import models
 
 from custom_components.renault.ev_settings import (
+    ALL_KCM_ENDPOINTS,
     CHARGE_PAUSE_RESUME_ENDPOINT,
+    CHARGE_SCHEDULE_ENDPOINT,
+    CHARGE_SETTINGS_ENDPOINT,
+    CHARGE_START_ENDPOINT,
     EV_SETTINGS_ENDPOINT,
     SOC_LEVELS_ENDPOINT,
 )
@@ -36,3 +40,39 @@ def test_vehicle_endpoints_registration():
     # Location refresh
     assert endpoints["actions/refresh-location"] is not None
     assert endpoints["actions/hvac-stop"] is not None
+
+
+def test_all_kcm_endpoints_exhaustive():
+    """Verify all 8 KCM endpoints identified from the Android APK are defined and mapped."""
+    # 1 & 2: GET / POST ev/settings
+    assert EV_SETTINGS_ENDPOINT.url == "/kcm/v1/vehicles/{vin}/ev/settings"
+    assert EV_SETTINGS_ENDPOINT.mode == "kcm-settings"
+
+    # 3 & 4: GET / POST ev/soc-levels
+    assert SOC_LEVELS_ENDPOINT.url == "/kcm/v1/vehicles/{vin}/ev/soc-levels"
+    assert SOC_LEVELS_ENDPOINT.mode == "kcm-soc-levels"
+
+    # 5: POST charge/pause-resume
+    assert CHARGE_PAUSE_RESUME_ENDPOINT.url == "/kcm/v1/vehicles/{vin}/charge/pause-resume"
+    assert CHARGE_PAUSE_RESUME_ENDPOINT.mode == "kcm-pause-resume"
+
+    # 6: POST charge/start
+    assert CHARGE_START_ENDPOINT.url == "/kcm/v1/vehicles/{vin}/charge/start"
+    assert CHARGE_START_ENDPOINT.mode == "kcm-charge-start"
+
+    # 7: GET charge/settings
+    assert CHARGE_SETTINGS_ENDPOINT.url == "/kcm/v1/vehicles/{vin}/charge/settings"
+    assert CHARGE_SETTINGS_ENDPOINT.mode == "kcm-charge-settings"
+
+    # 8: POST charge/schedule
+    assert CHARGE_SCHEDULE_ENDPOINT.url == "/kcm/v1/vehicles/{vin}/charge/schedule"
+    assert CHARGE_SCHEDULE_ENDPOINT.mode == "kcm-charge-schedule"
+
+    # Registry check
+    assert len(ALL_KCM_ENDPOINTS) == 6
+    assert ALL_KCM_ENDPOINTS["ev-settings"] == EV_SETTINGS_ENDPOINT
+    assert ALL_KCM_ENDPOINTS["soc-levels"] == SOC_LEVELS_ENDPOINT
+    assert ALL_KCM_ENDPOINTS["charge-pause-resume"] == CHARGE_PAUSE_RESUME_ENDPOINT
+    assert ALL_KCM_ENDPOINTS["charge-start"] == CHARGE_START_ENDPOINT
+    assert ALL_KCM_ENDPOINTS["charge-settings"] == CHARGE_SETTINGS_ENDPOINT
+    assert ALL_KCM_ENDPOINTS["charge-schedule"] == CHARGE_SCHEDULE_ENDPOINT

@@ -233,6 +233,17 @@ class RenaultVehicleProxy:
                 if coord := self.coordinators.get("battery"):
                     await coord.async_request_refresh()
                 return res
+            if endpoint and getattr(endpoint, "mode", None) == "kcm-charge-start":
+                payload = {
+                    "data": {
+                        "type": "ChargingStart",
+                        "attributes": {"action": "start"},
+                    }
+                }
+                res = await self._vehicle._set_vehicle_data(endpoint, payload)
+                if coord := self.coordinators.get("battery"):
+                    await coord.async_request_refresh()
+                return res
         res = await self._vehicle.set_charge_start(when)
         if coord := self.coordinators.get("battery"):
             await coord.async_request_refresh()
@@ -323,6 +334,11 @@ class RenaultVehicleProxy:
     @with_error_wrapping
     async def get_charging_settings(self) -> models.KamereonVehicleChargingSettingsData:
         """Get vehicle charging settings."""
+        if self.details.supports_endpoint("charging-settings"):
+            endpoint = self.details.get_endpoint("charging-settings")
+            if endpoint and getattr(endpoint, "mode", None) == "kcm-charge-settings":
+                response = await self._vehicle._get_vehicle_data(endpoint)
+                return models.KamereonVehicleChargingSettingsData.from_dict(response.raw_data)
         return await self._vehicle.get_charging_settings()
 
     @with_error_wrapping
@@ -330,6 +346,18 @@ class RenaultVehicleProxy:
         self, schedules: list[models.ChargeSchedule]
     ) -> models.KamereonVehicleChargeScheduleActionData:
         """Set vehicle charge schedules."""
+        if self.details.supports_endpoint("actions/charge-set-schedule"):
+            endpoint = self.details.get_endpoint("actions/charge-set-schedule")
+            if endpoint and getattr(endpoint, "mode", None) == "kcm-charge-schedule":
+                payload = {
+                    "data": {
+                        "type": "ChargeSchedule",
+                        "attributes": {
+                            "schedules": [getattr(s, "raw_data", s) for s in schedules]
+                        },
+                    }
+                }
+                return await self._vehicle._set_vehicle_data(endpoint, payload)
         return await self._vehicle.set_charge_schedules(schedules)
 
     @with_error_wrapping

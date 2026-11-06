@@ -35,6 +35,28 @@ SOC_LEVELS_ENDPOINT = models.EndpointDefinition(
     "/kcm/v1/vehicles/{vin}/ev/soc-levels", mode="kcm-soc-levels"
 )
 
+CHARGE_START_ENDPOINT = models.EndpointDefinition(
+    "/kcm/v1/vehicles/{vin}/charge/start", mode="kcm-charge-start"
+)
+
+CHARGE_SETTINGS_ENDPOINT = models.EndpointDefinition(
+    "/kcm/v1/vehicles/{vin}/charge/settings", mode="kcm-charge-settings"
+)
+
+CHARGE_SCHEDULE_ENDPOINT = models.EndpointDefinition(
+    "/kcm/v1/vehicles/{vin}/charge/schedule", mode="kcm-charge-schedule"
+)
+
+# Complete registry of all 8 KCM endpoints identified in My Dacia Android APK
+ALL_KCM_ENDPOINTS: dict[str, models.EndpointDefinition] = {
+    "ev-settings": EV_SETTINGS_ENDPOINT,
+    "soc-levels": SOC_LEVELS_ENDPOINT,
+    "charge-pause-resume": CHARGE_PAUSE_RESUME_ENDPOINT,
+    "charge-start": CHARGE_START_ENDPOINT,
+    "charge-settings": CHARGE_SETTINGS_ENDPOINT,
+    "charge-schedule": CHARGE_SCHEDULE_ENDPOINT,
+}
+
 # Register XBG2DE (Dacia Spring Phase 2 / MY26) and XBG1VE (Phase 1)
 # in renault_api._VEHICLE_ENDPOINTS so that supports_endpoint() works
 # out of the box even before renault-api upstream adds them.
