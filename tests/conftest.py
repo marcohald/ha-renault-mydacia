@@ -91,9 +91,13 @@ def _ensure_mock_modules() -> None:
         ha_helpers_update = ModuleType("homeassistant.helpers.update_coordinator")
         class DataUpdateCoordinator:
             __class_getitem__ = classmethod(lambda cls, item: cls)
-            def __init__(self, *args, **kwargs):
+            def __init__(self, hass=None, logger=None, *args, **kwargs):
+                self.hass = hass
+                self.logger = logger
+                self.name = kwargs.get("name")
                 self.data = kwargs.get("data")
                 self.update_method = kwargs.get("update_method")
+                self.update_interval = kwargs.get("update_interval")
                 self.assumed_state = False
 
         class UpdateFailed(HomeAssistantError):
@@ -183,6 +187,20 @@ def _ensure_mock_modules() -> None:
         sys.modules["homeassistant.helpers.device_registry"] = ha_dr
         sys.modules["homeassistant.helpers.issue_registry"] = ha_ir
         sys.modules["homeassistant.helpers.typing"] = ha_typing
+
+        from datetime import datetime as _dt, timezone as _tz
+
+        ha_util = ModuleType("homeassistant.util")
+        ha_util.__path__ = []
+        ha_util_dt = ModuleType("homeassistant.util.dt")
+        ha_util_dt.UTC = _tz.utc
+        ha_util_dt.utcnow = lambda: _dt.now(_tz.utc)
+        ha_util_dt.now = lambda: _dt.now().astimezone()
+        ha_util_dt.utc_from_timestamp = lambda ts: _dt.fromtimestamp(ts, _tz.utc)
+        ha_util_dt.as_local = lambda d: d.astimezone()
+        ha_util.dt = ha_util_dt
+        sys.modules["homeassistant.util"] = ha_util
+        sys.modules["homeassistant.util.dt"] = ha_util_dt
         sys.modules["homeassistant.helpers.service"] = ha_service
 
         ha_diag = ModuleType("homeassistant.components.diagnostics")
@@ -309,18 +327,23 @@ def _ensure_mock_modules() -> None:
 
         ra_kam = ModuleType("renault_api.kamereon")
         ra_kam.__path__ = []
+
+        async def _kamereon_request(*args, **kwargs):  # replaced by oidc patch
+            raise NotImplementedError
+
+        ra_kam.request = _kamereon_request
         ra_models = ModuleType("renault_api.kamereon.models")
         ra_models.__path__ = []
         ra_kam_exc = ModuleType("renault_api.kamereon.exceptions")
 
-        class ForbiddenException(Exception): pass
-        class NotAuthenticatedException(Exception): pass
-        class NotSupportedException(Exception): pass
-        class QuotaLimitException(Exception): pass
-        class KamereonResponseException(Exception): pass
+        # Mirror the real renault_api exception hierarchy
         class RenaultException(Exception): pass
-
-        class AccessDeniedException(Exception): pass
+        class NotAuthenticatedException(RenaultException): pass
+        class KamereonResponseException(RenaultException): pass
+        class ForbiddenException(KamereonResponseException): pass
+        class NotSupportedException(KamereonResponseException): pass
+        class QuotaLimitException(KamereonResponseException): pass
+        class AccessDeniedException(KamereonResponseException): pass
         ra_kam_exc.ForbiddenException = ForbiddenException
         ra_kam_exc.AccessDeniedException = AccessDeniedException
         ra_kam_exc.NotSupportedException = NotSupportedException
