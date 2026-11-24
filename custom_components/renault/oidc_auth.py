@@ -71,26 +71,25 @@ async def kamereon_request_with_bearer(
 
     Newer My Dacia / My Renault app versions (and `/kamereon/kcm/v1/vehicles/{vin}/ev/settings`)
     use `Authorization: Bearer <oidc_access_token>` and `application/json` (or `application/vnd.api+json`).
-    We send both `Authorization: Bearer <token>` and `x-gigya-id_token: <token>` so that both
-    OIDC tokens and legacy Gigya JWTs work seamlessly.
+    Tokens prefixed with "Bearer " (OIDC) are sent as `Authorization`; anything else is a
+    legacy Gigya JWT and is sent as `x-gigya-id_token` only.
     """
     schema = schema or schemas.KamereonResponseSchema
     is_kcm = "/kcm/" in url
     content_type = "application/json" if is_kcm else "application/vnd.api+json"
-    bearer_val = (
-        gigya_jwt
-        if gigya_jwt.startswith("Bearer ")
-        else f"Bearer {gigya_jwt}"
-    )
-    raw_token = gigya_jwt.removeprefix("Bearer ")
-
     headers = {
         "Content-type": content_type,
         "Accept": "application/json",
         "apikey": api_key,
-        "Authorization": bearer_val,
-        "x-gigya-id_token": raw_token,
     }
+    # OIDC access tokens arrive prefixed with "Bearer " (see RenaultHub OIDC
+    # resolver) and go in the Authorization header. Legacy Gigya JWTs must be
+    # sent ONLY as x-gigya-id_token: the wired gateway rejects a Gigya JWT in
+    # an Authorization header with 401 err.func.wired.unauthorized.
+    if gigya_jwt.startswith("Bearer "):
+        headers["Authorization"] = gigya_jwt
+    else:
+        headers["x-gigya-id_token"] = gigya_jwt
     async with websession.request(
         method,
         url,

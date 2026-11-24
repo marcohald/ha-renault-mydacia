@@ -25,7 +25,7 @@ from renault_api.kamereon.models import (
 from renault_api.renault_account import RenaultAccount
 
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import DOMAIN, VEHICLE_LIST_SCAN_INTERVAL, RenaultConfigurationKeys
@@ -38,6 +38,21 @@ _LOGGER = logging.getLogger(__name__)
 
 # We have potentially 7 coordinators per vehicle
 _PARALLEL_SEMAPHORE = asyncio.Semaphore(1)
+
+
+async def _call_unwrapped(method: Callable[[], Awaitable[T]]) -> T:
+    """Call an update method, re-raising the Renault error behind a HomeAssistantError.
+
+    Proxy methods decorated with `with_error_wrapping` turn Renault errors into
+    HomeAssistantError (useful for actions). For polling we need the original
+    exception (e.g. QuotaLimitException) to apply the right handling.
+    """
+    try:
+        return await method()
+    except HomeAssistantError as err:
+        if isinstance(err.__cause__, (KamereonResponseException, NotAuthenticatedException)):
+            raise err.__cause__ from err
+        raise
 
 
 class RenaultDataUpdateCoordinator(DataUpdateCoordinator[T], Generic[T]):
@@ -74,13 +89,15 @@ class RenaultDataUpdateCoordinator(DataUpdateCoordinator[T], Generic[T]):
 
         self._has_already_worked = False
         self._hub = hub
+        # name is "<vin> <coordinator key>"; quota pauses are tracked per endpoint
+        self.throttle_key = name.rsplit(" ", 1)[-1]
 
 
     @override
     async def _async_update_data(self) -> T:
         """Fetch the latest data from the source."""
 
-        if self._hub.is_throttled():
+        if self._hub.is_throttled(self.throttle_key):
             if not self._has_already_worked:
                 raise UpdateFailed(
                     translation_domain=DOMAIN,
@@ -95,7 +112,7 @@ class RenaultDataUpdateCoordinator(DataUpdateCoordinator[T], Generic[T]):
 
         try:
             async with _PARALLEL_SEMAPHORE:
-                data = await self.update_method()
+                data = await _call_unwrapped(self.update_method)
 
         except AccessDeniedException as err:
             # This can mean both a temporary error or a permanent error. If it has
@@ -109,11 +126,10 @@ class RenaultDataUpdateCoordinator(DataUpdateCoordinator[T], Generic[T]):
             ) from err
 
         except QuotaLimitException as err:
-            # The data we got is not bad per see, initiate cooldown for all coordinators
-            self._hub.set_throttled()
+            # Quota exhausted for this endpoint: pause it (other endpoints keep polling)
+            self._hub.set_throttled(self.throttle_key)
             if self._has_already_worked:
                 self.assumed_state = True
-                self.logger.warning("Renault API throttled")
                 return self.data
 
             raise UpdateFailed(
@@ -152,6 +168,7 @@ class RenaultDataUpdateCoordinator(DataUpdateCoordinator[T], Generic[T]):
 
         self._has_already_worked = True
         self.assumed_state = False
+        self._hub.set_api_ok(self.throttle_key)
         return data
 
     @override
@@ -232,4 +249,5 @@ class RenaultVehicleListCoordinator(DataUpdateCoordinator[list[KamereonVehiclesL
                 translation_key="communication_error",
             ) from err
 
+        self._hub.set_api_ok()
         return vehicles.vehicleLinks or []

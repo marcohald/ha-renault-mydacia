@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 import contextlib
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
 from time import time
 from typing import TYPE_CHECKING
@@ -21,18 +21,23 @@ from renault_api.gigya.exceptions import (
     PendingTwoFactorAuthenticationException,
 )
 from renault_api.gigya.models import GigyaTfaEmail
-from renault_api.kamereon.exceptions import KamereonResponseException
+from renault_api.kamereon.exceptions import (
+    KamereonResponseException,
+    QuotaLimitException,
+)
 from renault_api.kamereon.models import KamereonVehiclesLink
 from renault_api.renault_account import RenaultAccount
 from renault_api.renault_client import RenaultClient
 
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.util import dt as dt_util
 
 from .const import (
     COOLING_UPDATES_SECONDS,
+    MAX_COOLING_UPDATES_SECONDS,
     DOMAIN,
     MAX_CALLS_PER_HOURS,
     RenaultConfigurationKeys,
@@ -51,6 +56,8 @@ if TYPE_CHECKING:
     from . import RenaultConfigEntry
 
 LOGGER = logging.getLogger(__name__)
+
+VEHICLES_THROTTLE_KEY = "vehicles"
 
 
 async def _get_filtered_vehicles(account: RenaultAccount) -> list[KamereonVehiclesLink]:
@@ -130,21 +137,128 @@ class RenaultHub:
         """Restore Gigya device ids, so a remembered device skips two-factor auth."""
         self._client.session.set_device_ids(device_ids)
 
-    def set_throttled(self) -> None:
-        """We got throttled, we need to adjust the rate limit."""
-        if self._got_throttled_at_time is None:
-            self._got_throttled_at_time = time()
+    # --- API quota handling -------------------------------------------------
+    # Renault enforces the quota per endpoint (e.g. `location` can be
+    # "overloaded" while `battery-status` still answers), so every endpoint
+    # gets its own pause. VEHICLES_THROTTLE_KEY is used for the account
+    # vehicle list (setup + vehicle list coordinator).
 
-    def is_throttled(self) -> bool:
-        """Check if we are throttled."""
-        if self._got_throttled_at_time is None:
+    @property
+    def _throttle_states(self) -> dict[str, dict[str, float | int | None]]:
+        """Throttle state per endpoint, shared across reloads/setup retries."""
+        key = self._config_entry.entry_id if self._config_entry else str(id(self))
+        store: dict[str, dict[str, dict[str, float | int | None]]] = (
+            self._hass.data.setdefault(f"{DOMAIN}_throttle", {})
+        )
+        return store.setdefault(key, {})
+
+    def _throttle_state(self, endpoint: str) -> dict[str, float | int | None]:
+        return self._throttle_states.setdefault(endpoint, {"until": None, "count": 0})
+
+    def throttled_until(self, endpoint: str = VEHICLES_THROTTLE_KEY) -> datetime | None:
+        """Return when the quota pause of `endpoint` ends (None if not paused)."""
+        until = self._throttle_state(endpoint)["until"]
+        if until is None or time() >= float(until):
+            return None
+        return dt_util.utc_from_timestamp(float(until))
+
+    def _quota_issue_id(self) -> str:
+        key = self._config_entry.entry_id if self._config_entry else "unknown"
+        return f"api_quota_exceeded_{key}"
+
+    def set_throttled(self, endpoint: str = VEHICLES_THROTTLE_KEY) -> datetime:
+        """Renault answered err.func.wired.overloaded for `endpoint`: pause it.
+
+        The pause starts at COOLING_UPDATES_SECONDS and doubles with every
+        consecutive throttle (no successful call in between), capped at
+        MAX_COOLING_UPDATES_SECONDS. A repair issue lists the paused endpoints
+        and when they will be retried.
+        """
+        state = self._throttle_state(endpoint)
+        if state["until"] is not None and time() < float(state["until"]):
+            return dt_util.utc_from_timestamp(float(state["until"]))
+        state["count"] = int(state["count"] or 0) + 1
+        pause = min(
+            COOLING_UPDATES_SECONDS * 2 ** (int(state["count"]) - 1),
+            MAX_COOLING_UPDATES_SECONDS,
+        )
+        state["until"] = time() + pause
+        until = dt_util.utc_from_timestamp(float(state["until"]))
+        LOGGER.warning(
+            "Renault API quota exceeded for '%s' (err.func.wired.overloaded). "
+            "Pausing this endpoint for %d min, next attempt at %s",
+            endpoint,
+            pause // 60,
+            dt_util.as_local(until).strftime("%Y-%m-%d %H:%M"),
+        )
+        self._async_update_quota_issue()
+        return until
+
+    def is_throttled(self, endpoint: str = VEHICLES_THROTTLE_KEY) -> bool:
+        """Check if `endpoint` is inside a quota pause."""
+        state = self._throttle_state(endpoint)
+        if state["until"] is None:
             return False
-
-        if time() - self._got_throttled_at_time > COOLING_UPDATES_SECONDS:
-            self._got_throttled_at_time = None
+        if time() >= float(state["until"]):
+            # Pause over: allow the next call. Keep `count` so that an immediate
+            # new throttle doubles the pause; it is reset by set_api_ok().
+            state["until"] = None
+            self._async_update_quota_issue()
             return False
-
         return True
+
+    def set_api_ok(self, endpoint: str = VEHICLES_THROTTLE_KEY) -> None:
+        """A request to `endpoint` succeeded: reset its backoff."""
+        state = self._throttle_states.get(endpoint)
+        if state and (state["count"] or state["until"]):
+            LOGGER.info("Renault API endpoint '%s' answers again", endpoint)
+            del self._throttle_states[endpoint]
+            self._async_update_quota_issue()
+
+    @callback
+    def _async_update_quota_issue(self) -> None:
+        """Create/refresh or remove the repair warning listing paused endpoints."""
+        now = time()
+        paused = sorted(
+            (float(st["until"]), name)
+            for name, st in self._throttle_states.items()
+            if st["until"] is not None and now < float(st["until"])
+        )
+        if not paused:
+            ir.async_delete_issue(self._hass, DOMAIN, self._quota_issue_id())
+            return
+        lines = "\n".join(
+            f"- `{name}`: "
+            + dt_util.as_local(dt_util.utc_from_timestamp(until)).strftime("%d.%m.%Y %H:%M")
+            for until, name in paused
+        )
+        ir.async_create_issue(
+            self._hass,
+            DOMAIN,
+            self._quota_issue_id(),
+            is_fixable=False,
+            is_persistent=False,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="api_quota_exceeded",
+            translation_placeholders={
+                "endpoints": lines,
+                "retry_at": dt_util.as_local(
+                    dt_util.utc_from_timestamp(paused[-1][0])
+                ).strftime("%d.%m.%Y %H:%M"),
+            },
+        )
+
+    def _quota_not_ready(self) -> ConfigEntryNotReady:
+        until = self.throttled_until()
+        return ConfigEntryNotReady(
+            translation_domain=DOMAIN,
+            translation_key="api_quota_exceeded",
+            translation_placeholders={
+                "retry_at": dt_util.as_local(until).strftime("%d.%m.%Y %H:%M")
+                if until
+                else "?"
+            },
+        )
 
     async def attempt_login(self, username: str, password: str) -> bool:
         """Attempt login to Renault servers."""
@@ -185,7 +299,7 @@ class RenaultHub:
             async with session._gigya_lock:
                 jwt = session._credentials.get_value(GIGYA_JWT)
                 if jwt:
-                    return jwt
+                    return f"Bearer {jwt}"
                 refresh_tok = config_entry.data.get(
                     RenaultConfigurationKeys.OIDC_REFRESH_TOKEN
                 )
@@ -217,7 +331,7 @@ class RenaultHub:
                             RenaultConfigurationKeys.OIDC_REFRESH_TOKEN: new_refresh,
                         },
                     )
-                    return new_access
+                    return f"Bearer {new_access}"
             return await orig_get_jwt()
 
         session._get_jwt = _oidc_get_jwt  # type: ignore[method-assign]
@@ -298,15 +412,24 @@ class RenaultHub:
 
     async def async_initialise(self, config_entry: RenaultConfigEntry) -> None:
         """Set up proxy."""
+        self._config_entry = config_entry
+        if self.is_throttled():
+            # Still inside a quota pause: do not touch the API at all.
+            raise self._quota_not_ready()
+
         await self.async_login(config_entry)
 
         account_id: str = config_entry.data[
             RenaultConfigurationKeys.KAMEREON_ACCOUNT_ID
         ]
 
-        self._config_entry = config_entry
         self._account = await self._client.get_api_account(account_id)
-        vehicles = await self._account.get_vehicles()
+        try:
+            vehicles = await self._account.get_vehicles()
+        except QuotaLimitException as err:
+            self.set_throttled()
+            raise self._quota_not_ready() from err
+        self.set_api_ok()
         all_vehicle_links = vehicles.vehicleLinks or []
         vehicle_links = await _filter_vehicles_with_details(
             self._account, all_vehicle_links, self._missing_details_vins

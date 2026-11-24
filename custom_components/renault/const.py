@@ -34,6 +34,8 @@ VEHICLE_LIST_SCAN_INTERVAL = timedelta(hours=1)
 
 # If throttled time to pause the updates, in seconds
 COOLING_UPDATES_SECONDS = 60 * 15  # 15 minutes
+# Each consecutive throttle doubles the pause, up to this maximum
+MAX_COOLING_UPDATES_SECONDS = 60 * 120  # 2 hours
 
 PLATFORMS = [
     Platform.BINARY_SENSOR,

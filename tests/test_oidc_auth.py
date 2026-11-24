@@ -39,7 +39,8 @@ async def test_kamereon_request_with_bearer_headers():
     _, kwargs = mock_session.request.call_args
     headers = kwargs["headers"]
 
-    assert headers["Authorization"] == "Bearer secret_token"
+    # Legacy Gigya JWT: only x-gigya-id_token, never Authorization (gateway -> 401)
+    assert "Authorization" not in headers
     assert headers["x-gigya-id_token"] == "secret_token"
     assert headers["apikey"] == MYDACIA_WIRED_API_KEY
     assert headers["Content-type"] == "application/json"
@@ -72,6 +73,9 @@ async def test_kamereon_request_kca_content_type():
     _, kwargs = mock_session.request.call_args
     headers = kwargs["headers"]
     assert headers["Content-type"] == "application/vnd.api+json"
+    # OIDC token: Authorization only
+    assert headers["Authorization"] == "Bearer test_token"
+    assert "x-gigya-id_token" not in headers
 
 
 @pytest.mark.asyncio

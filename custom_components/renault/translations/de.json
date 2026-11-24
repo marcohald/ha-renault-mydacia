@@ -1,0 +1,16 @@
+{
+  "exceptions": {
+    "api_quota_exceeded": {
+      "message": "Renault-API-Kontingent überschritten. Anfragen sind bis {retry_at} pausiert."
+    },
+    "api_quota_exceeded_action": {
+      "message": "Renault-API-Kontingent für diese Anfrage überschritten (err.func.wired.overloaded). Bitte später erneut versuchen."
+    }
+  },
+  "issues": {
+    "api_quota_exceeded": {
+      "title": "Renault-API-Kontingent überschritten",
+      "description": "Die Renault/Dacia-Server melden für einige Daten ein aufgebrauchtes Anfragekontingent (`err.func.wired.overloaded`). Damit es sich erholen kann, pausiert Home Assistant die Anfragen an diese Endpunkte (die übrigen werden weiter aktualisiert). Nächster Versuch je Endpunkt:\n\n{endpoints}\n\nBis dahin bleiben die zuletzt bekannten Werte erhalten. Diese Warnung verschwindet automatisch, sobald die Server wieder antworten.\n\nHäufige Neustarts von Home Assistant, Neuladen der Integration, Automationen, die Renault-Aktionen sehr oft aufrufen, oder intensive Nutzung der My-Dacia-App verbrauchen dasselbe Kontingent."
+    }
+  }
+}

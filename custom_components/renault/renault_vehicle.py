@@ -10,7 +10,8 @@ import logging
 from typing import TYPE_CHECKING, Any, Concatenate, ParamSpec, TypeVar, cast
 
 from renault_api.exceptions import NotAuthenticatedException, RenaultException
-from renault_api.kamereon import models
+from renault_api.kamereon import models, schemas
+from renault_api.kamereon.exceptions import QuotaLimitException
 from renault_api.renault_vehicle import RenaultVehicle
 
 from homeassistant.core import HomeAssistant
@@ -59,6 +60,11 @@ def with_error_wrapping(
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="authentication_expired",
+            ) from err
+        except QuotaLimitException as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="api_quota_exceeded_action",
             ) from err
         except RenaultException as err:
             raise HomeAssistantError(
@@ -281,10 +287,12 @@ class RenaultVehicleProxy:
                 attrs = raw.get("attributes", raw)
                 soc_min = attrs.get("socMin") if attrs.get("socMin") is not None else attrs.get("socMinLevel")
                 soc_target = attrs.get("socTarget") if attrs.get("socTarget") is not None else attrs.get("socTargetLevel")
-                return models.KamereonVehicleBatterySocData.from_dict({
-                    "socMin": soc_min,
-                    "socTarget": soc_target,
-                })
+                return models.KamereonVehicleBatterySocData(
+                    raw_data=raw,
+                    lastEnergyUpdateTimestamp=attrs.get("lastEnergyUpdateTimestamp"),
+                    socMin=soc_min,
+                    socTarget=soc_target,
+                )
         return await self._vehicle.get_battery_soc()
 
     @with_error_wrapping
@@ -338,7 +346,9 @@ class RenaultVehicleProxy:
             endpoint = self.details.get_endpoint("charging-settings")
             if endpoint and getattr(endpoint, "mode", None) == "kcm-charge-settings":
                 response = await self._vehicle._get_vehicle_data(endpoint)
-                return models.KamereonVehicleChargingSettingsData.from_dict(response.raw_data)
+                return response.get_attributes(
+                    schemas.KamereonVehicleChargingSettingsDataSchema
+                )
         return await self._vehicle.get_charging_settings()
 
     @with_error_wrapping

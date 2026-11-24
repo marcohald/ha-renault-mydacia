@@ -348,6 +348,12 @@
     },
     "unknown_error": {
       "message": "An unknown error occurred while communicating with the Renault servers"
+    },
+    "api_quota_exceeded": {
+      "message": "Renault API quota exceeded. Requests are paused until {retry_at}."
+    },
+    "api_quota_exceeded_action": {
+      "message": "Renault API quota exceeded for this request (err.func.wired.overloaded). Please try again later."
     }
   },
   "issues": {
@@ -372,6 +378,10 @@
         }
       },
       "title": "Renault account {account_id} no longer exists"
+    },
+    "api_quota_exceeded": {
+      "title": "Renault API quota exceeded",
+      "description": "The Renault/Dacia servers report that the request quota is exhausted (`err.func.wired.overloaded`) for some data. To let the quota recover, Home Assistant pauses requests to these endpoints (the others keep updating). Next attempt per endpoint:\n\n{endpoints}\n\nUntil then the last known values are kept. This warning disappears automatically once the servers answer again.\n\nFrequent Home Assistant restarts, integration reloads, automations calling Renault actions very often, or heavy use of the My Dacia app all consume the same quota."
     }
   },
   "services": {
