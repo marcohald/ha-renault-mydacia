@@ -1,21 +1,21 @@
 {
   "config": {
     "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_account%]",
-      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "already_configured": "Account is already configured",
+      "cannot_connect": "Failed to connect",
       "kamereon_no_account": "Unable to find Kamereon account",
       "two_factor_no_email": "No email address is registered for two-factor authentication on your Renault account",
       "unique_id_mismatch": "The selected Kamereon account ID does not match the previous account ID",
-      "unknown": "[%key:common::config_flow::error::unknown%]"
+      "unknown": "Unexpected error"
     },
     "error": {
-      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "cannot_connect": "Failed to connect",
       "invalid_code": "Invalid verification code",
-      "invalid_credentials": "[%key:common::config_flow::error::invalid_auth%]",
-      "unknown": "[%key:common::config_flow::error::unknown%]"
+      "invalid_credentials": "Invalid authentication",
+      "unknown": "Unexpected error"
     },
     "initiate_flow": {
-      "user": "[%key:common::config_flow::initiate_flow::account%]"
+      "user": "Add account"
     },
     "step": {
       "kamereon": {
@@ -30,7 +30,7 @@
       },
       "reauth_confirm": {
         "data": {
-          "password": "[%key:common::config_flow::data::password%]",
+          "password": "Password",
           "oidc_refresh_token": "OIDC Refresh Token (optional)",
           "oidc_access_token": "OIDC Access Token (optional)"
         },
@@ -40,7 +40,7 @@
           "oidc_access_token": "Bearer access token from My Dacia / My Renault OIDC auth_state"
         },
         "description": "Please update your credentials for {username}",
-        "title": "[%key:common::config_flow::title::reauth%]"
+        "title": "Authentication expired for {name}"
       },
       "two_factor_code": {
         "data": {
@@ -54,21 +54,21 @@
       },
       "two_factor_email": {
         "data": {
-          "email": "[%key:common::config_flow::data::email%]"
+          "email": "Email"
         },
         "data_description": {
           "email": "The email address to send the verification code to"
         },
         "description": "Your Renault account requires two-factor authentication. Select the email address to send the verification code to.",
-        "title": "[%key:component::renault::config::step::two_factor_code::title%]"
+        "title": "Two-factor authentication"
       },
       "user": {
         "data": {
           "locale": "Locale",
           "oidc_access_token": "OIDC Access Token (optional)",
           "oidc_refresh_token": "OIDC Refresh Token (optional)",
-          "password": "[%key:common::config_flow::data::password%]",
-          "username": "[%key:common::config_flow::data::email%]"
+          "password": "Password",
+          "username": "Email"
         },
         "data_description": {
           "locale": "Your country code",
@@ -135,7 +135,7 @@
     },
     "device_tracker": {
       "location": {
-        "name": "[%key:common::config_flow::data::location%]"
+        "name": "Location"
       }
     },
     "number": {
@@ -192,7 +192,7 @@
         "state": {
           "charge_ended": "Charge ended",
           "charge_error": "Not charging or plugged in",
-          "charge_in_progress": "[%key:common::state::charging%]",
+          "charge_in_progress": "Charging",
           "energy_flap_opened": "Energy flap opened",
           "not_in_charge": "Not charging",
           "unavailable": "Unavailable",
@@ -360,14 +360,14 @@
     "account_not_found": {
       "fix_flow": {
         "abort": {
-          "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+          "cannot_connect": "Failed to connect",
           "no_new_account": "No other Kamereon account linked to your vehicles was found. If you already added your vehicles again under a new Renault entry, delete the entry for account {account_id}.",
           "reauth_required": "Your Renault login is no longer valid. Re-authenticate the Renault integration, then open this repair again."
         },
         "step": {
           "account": {
             "data": {
-              "kamereon_account_id": "[%key:component::renault::config::step::kamereon::data::kamereon_account_id%]"
+              "kamereon_account_id": "Account ID"
             },
             "data_description": {
               "kamereon_account_id": "The new Kamereon account ID linked to your vehicles"
@@ -389,7 +389,7 @@
       "description": "Cancels A/C on vehicle.",
       "fields": {
         "vehicle": {
-          "description": "[%key:component::renault::services::ac_start::fields::vehicle::description%]",
+          "description": "The vehicle to send the command to.",
           "name": "Vehicle"
         }
       },
@@ -399,11 +399,11 @@
       "description": "Updates A/C schedule on vehicle (supports both KCA hvac-schedule and KCM ev/settings).",
       "fields": {
         "schedules": {
-          "description": "[%key:component::renault::services::charge_set_schedules::fields::schedules::description%]",
+          "description": "Schedule details.",
           "name": "Schedules"
         },
         "vehicle": {
-          "description": "[%key:component::renault::services::ac_start::fields::vehicle::description%]",
+          "description": "The vehicle to send the command to.",
           "name": "Vehicle"
         }
       },
@@ -435,7 +435,7 @@
           "name": "Schedules"
         },
         "vehicle": {
-          "description": "[%key:component::renault::services::ac_start::fields::vehicle::description%]",
+          "description": "The vehicle to send the command to.",
           "name": "Vehicle"
         }
       },
@@ -445,7 +445,7 @@
       "description": "Starts charging on vehicle.",
       "fields": {
         "vehicle": {
-          "description": "[%key:component::renault::services::ac_start::fields::vehicle::description%]",
+          "description": "The vehicle to send the command to.",
           "name": "Vehicle"
         },
         "when": {
@@ -499,7 +499,7 @@
       "description": "Stops charging on vehicle.",
       "fields": {
         "vehicle": {
-          "description": "[%key:component::renault::services::ac_start::fields::vehicle::description%]",
+          "description": "The vehicle to send the command to.",
           "name": "Vehicle"
         }
       },
@@ -509,7 +509,7 @@
       "description": "Sounds the vehicle horn.",
       "fields": {
         "vehicle": {
-          "description": "[%key:component::renault::services::ac_start::fields::vehicle::description%]",
+          "description": "The vehicle to send the command to.",
           "name": "Vehicle"
         }
       },
@@ -519,7 +519,7 @@
       "description": "Flashes the vehicle headlights.",
       "fields": {
         "vehicle": {
-          "description": "[%key:component::renault::services::ac_start::fields::vehicle::description%]",
+          "description": "The vehicle to send the command to.",
           "name": "Vehicle"
         }
       },
@@ -529,7 +529,7 @@
       "description": "Requests an immediate GPS location refresh from the vehicle.",
       "fields": {
         "vehicle": {
-          "description": "[%key:component::renault::services::ac_start::fields::vehicle::description%]",
+          "description": "The vehicle to send the command to.",
           "name": "Vehicle"
         }
       },

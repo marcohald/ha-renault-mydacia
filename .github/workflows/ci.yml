@@ -28,6 +28,15 @@ jobs:
               print("ok", f)
           PY
 
+      - name: No unresolved [%key:...%] references in translations
+        # HA only resolves these references for core integrations; custom
+        # integrations must ship fully resolved translations/*.json.
+        run: |
+          if grep -n '\[%key:' custom_components/renault/translations/*.json; then
+            echo "::error::Unresolved [%key:...%] references in translations"
+            exit 1
+          fi
+
       - name: Compile Python sources
         run: python -m compileall -q custom_components tests
 
