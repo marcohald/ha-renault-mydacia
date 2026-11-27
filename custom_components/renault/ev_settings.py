@@ -64,7 +64,8 @@ if "XBG2DE" not in models._VEHICLE_ENDPOINTS:
     models._VEHICLE_ENDPOINTS["XBG2DE"] = {
         "actions/charge-set-mode": None,
         "actions/charge-set-schedule": EV_SETTINGS_ENDPOINT,
-        "actions/charge-start": CHARGE_PAUSE_RESUME_ENDPOINT,
+        # The My Dacia app starts charging via POST /ev/settings with programs=[]
+        "actions/charge-start": EV_SETTINGS_ENDPOINT,
         "actions/charge-stop": CHARGE_PAUSE_RESUME_ENDPOINT,
         "actions/horn-start": models._DEFAULT_ENDPOINTS["actions/horn-start"],
         "actions/hvac-set-schedule": EV_SETTINGS_ENDPOINT,

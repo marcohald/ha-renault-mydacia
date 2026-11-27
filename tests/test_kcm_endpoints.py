@@ -20,8 +20,9 @@ def test_vehicle_endpoints_registration():
 
     endpoints = models._VEHICLE_ENDPOINTS["XBG2DE"]
 
-    # Charge pause-resume endpoints
-    assert endpoints["actions/charge-start"] == CHARGE_PAUSE_RESUME_ENDPOINT
+    # Charge start = POST /ev/settings with programs=[] (as the My Dacia app)
+    assert endpoints["actions/charge-start"] == EV_SETTINGS_ENDPOINT
+    # Charge stop stays on pause-resume
     assert endpoints["actions/charge-stop"] == CHARGE_PAUSE_RESUME_ENDPOINT
     assert CHARGE_PAUSE_RESUME_ENDPOINT.mode == "kcm-pause-resume"
     assert "/charge/pause-resume" in CHARGE_PAUSE_RESUME_ENDPOINT.url

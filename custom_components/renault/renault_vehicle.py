@@ -118,6 +118,8 @@ class RenaultVehicleProxy:
         )
         self.coordinators: dict[str, RenaultDataUpdateCoordinator] = {}
         self.hvac_target_temperature = 21
+        # EV programs removed by the last instant charge (see set_charge_start)
+        self.programs_before_instant_charge: list[dict[str, Any]] = []
         self._scan_interval = scan_interval
         self._hub = hub
 
@@ -228,6 +230,8 @@ class RenaultVehicleProxy:
         """Start vehicle charge."""
         if self.details.supports_endpoint("actions/charge-start"):
             endpoint = self.details.get_endpoint("actions/charge-start")
+            if endpoint and getattr(endpoint, "mode", None) == "kcm-settings":
+                return await self._instant_charge_via_ev_settings()
             if endpoint and getattr(endpoint, "mode", None) == "kcm-pause-resume":
                 payload = {
                     "data": {
@@ -254,6 +258,30 @@ class RenaultVehicleProxy:
         if coord := self.coordinators.get("battery"):
             await coord.async_request_refresh()
         return res
+
+    async def _instant_charge_via_ev_settings(self) -> dict[str, Any]:
+        """Start charging now, exactly like the My Dacia app (Phase 2 / KCM).
+
+        Captured from the app ("start charging" -> "confirm"):
+          1. GET  .../kcm/v1/vehicles/{vin}/ev/settings
+          2. POST .../kcm/v1/vehicles/{vin}/ev/settings with the current settings,
+             a fresh `lastSettingsUpdateTimestamp` and `programs: []`
+             (`chargeModeRq` stays unchanged, e.g. "SCHEDULED").
+        Removing all programs is what makes the car charge immediately; the app
+        warns "All of your programmes will be disabled". The removed programs
+        are logged so they can be restored.
+        """
+        current = await self.get_ev_settings()
+        if current.programs:
+            LOGGER.warning(
+                "Instant charge for %s removes %d EV program(s), as the My Dacia app "
+                "does. Previous programs: %s",
+                self.details.vin,
+                len(current.programs),
+                current.programs,
+            )
+        self.programs_before_instant_charge = list(current.programs or [])
+        return await self.set_ev_settings(current.to_post_body(programs=[]))
 
     @with_error_wrapping
     async def set_charge_stop(self) -> models.KamereonVehicleChargingStartActionData:
